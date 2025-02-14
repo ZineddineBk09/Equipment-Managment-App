@@ -1,7 +1,7 @@
 # ResenixPro - Industrial Equipment Management System
 
 <div align="center">
-  <img src="public/dashboard.png" alt="ResenixPro Dashboard" width="800px" />
+  <img src="public/welcome.png" alt="ResenixPro Dashboard" width="800px" />
   
   ![GitHub](https://img.shields.io/github/license/ZineddineBk09/Equipment-Managment-App)
   ![GitHub last commit](https://img.shields.io/github/last-commit/ZineddineBk09/Equipment-Managment-App)

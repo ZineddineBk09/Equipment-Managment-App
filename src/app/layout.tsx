@@ -93,20 +93,20 @@ export const metadata: Metadata = {
       "Enterprise equipment management and maintenance tracking platform",
     images: [
       {
-        url: "/og-image.png",
+        url: "/logo.png",
         width: 1200,
         height: 630,
         alt: "ResenixPro Dashboard Preview",
         type: "image/png",
-        secureUrl: "https://resenix-pro.vercel.app/og-image.png",
+        secureUrl: "https://resenix-pro.vercel.app/logo.png",
       },
       {
-        url: "/og-image-square.png",
+        url: "/logo.png",
         width: 600,
         height: 600,
         alt: "ResenixPro Logo",
         type: "image/png",
-        secureUrl: "https://resenix-pro.vercel.app/og-image-square.png",
+        secureUrl: "https://resenix-pro.vercel.app/logo.png",
       },
     ],
   },
@@ -118,7 +118,7 @@ export const metadata: Metadata = {
     description:
       "Transform your equipment maintenance with our intelligent management system",
     images: {
-      url: "/twitter-card.png",
+      url: "/logo.png",
       alt: "ResenixPro Dashboard Preview",
       width: 1200,
       height: 630,

@@ -27,9 +27,9 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-screen w-64 flex-col bg-gray-800 text-white">
-      <div className="gap-x-2 flex h-16 items-center justify-center border-b border-gray-700">
-        <HardHat className="text-white text-3xl" />
+    <div className="flex h-screen w-64 flex-col bg-gray-900 text-white">
+      <div className="space-x-2 flex h-16 items-center justify-center border-b border-gray-700">
+        <img src="/logo-removebg.png" alt="" className="h-12 w-12"/>
         <h1 className="text-lg font-bold truncate">ResenixPro</h1>
       </div>
       <nav className="flex-1 space-y-1 px-2 py-4">

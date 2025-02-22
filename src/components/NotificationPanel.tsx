@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, Copy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,23 +14,12 @@ import { db } from "@/lib/firebase";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import dayjs from "dayjs";
 import { toast } from "@/hooks/use-toast";
-
-const getTimeCategory = (dateStr: string) => {
-  const now = new Date();
-  const targetDate = new Date(dateStr);
-  const diffMs = targetDate.getTime() - now.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return "overdue";
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "24h";
-  if (diffDays === 2) return "48h";
-  if (diffDays <= 7) return "1week";
-  return null;
-};
+import { getTimeCategory, playNotificationSound } from "@/utils";
+import Link from "next/link";
 
 export function NotificationsPanel() {
   const [notifications, setNotifications] = useState([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const tasksQuery = query(collection(db, "tasks"));
@@ -60,10 +49,12 @@ export function NotificationsPanel() {
             imageUrl:
               "https://img.freepik.com/free-vector/ecology-protection-environment-preservation-nature-conservation-eco-friendly-mechanism-idea-cogwheels-leaves-mechanical-parts-with-foliage_335657-1588.jpg?semt=ais_hybrid", // Placeholder, replace with actual,
             itemId: data.equipmentId,
+            maintenanceId: doc.id,
           };
         })
         .filter(Boolean);
       setNotifications((prev: any) => [...prev, ...tasksNotifications] as any);
+      playNotificationSound(audioRef);
     });
 
     const unsubscribeEquipment = onSnapshot(equipmentQuery, (snapshot) => {
@@ -75,8 +66,8 @@ export function NotificationsPanel() {
 
           if (remainingHours <= 0) category = "overdue";
           else if (remainingHours <= 24) category = "24h";
-          else if (remainingHours <= 48) category = "48h";
-          else if (remainingHours <= 168) category = "1week";
+          // else if (remainingHours <= 48) category = "48h";
+          // else if (remainingHours <= 168) category = "1week";
 
           if (!category) return null;
 
@@ -100,6 +91,7 @@ export function NotificationsPanel() {
         })
         .filter(Boolean);
       setNotifications((prev) => [...prev, ...equipmentNotifications] as any);
+      playNotificationSound(audioRef);
     });
 
     return () => {
@@ -107,6 +99,12 @@ export function NotificationsPanel() {
       unsubscribeEquipment();
     };
   }, []);
+
+  useEffect(() => {
+    if (notifications.length > 0) {
+      playNotificationSound(audioRef);
+    }
+  }, [notifications]);
 
   return (
     <Card className="w-[380px]">
@@ -124,7 +122,7 @@ export function NotificationsPanel() {
           <div
             key={notification.id}
             className={cn(
-              "h-fit grid grid-cols-[50px_1fr] items-start p-3 rounded-lg border transition-colors hover:bg-accent/40",
+              "relative h-fit grid grid-cols-[50px_1fr] items-start p-3 rounded-lg border transition-colors hover:bg-accent/40",
               notification.type === "overdue" &&
                 "bg-red-500/10 hover:bg-red-500/20 border-red-500/50",
               notification.type === "24h" &&
@@ -135,6 +133,10 @@ export function NotificationsPanel() {
                 "bg-blue-100/50 hover:bg-blue-100 border-blue-200"
             )}
           >
+            <audio ref={audioRef} preload="auto">
+              <source src="/sounds/notification.mp3" type="audio/mpeg" />
+            </audio>
+
             <div className="relative">
               <img
                 src={notification.imageUrl}
@@ -167,10 +169,10 @@ export function NotificationsPanel() {
                   minute: "2-digit",
                 })}
               </div>
-              <div className="text-sm text-muted-foreground flex items-center gap-x-2">
+              <div className="!z-20 text-sm text-muted-foreground flex items-center gap-x-2">
                 <button
                   title="Copy equipment ID"
-                  className="border-none outline-none"
+                  className="border-none outline-none z-20"
                   onClick={() => {
                     navigator.clipboard.writeText(notification.itemId);
                     toast({
@@ -184,6 +186,19 @@ export function NotificationsPanel() {
                 </button>{" "}
                 {notification.itemId}
               </div>
+
+              <Link
+                href={
+                  notification.maintenanceId
+                    ? `/dashboard/tasks?search=${encodeURIComponent(
+                        notification.maintenanceId
+                      )}`
+                    : `/dashboard/equipment?search=${encodeURIComponent(
+                        notification.itemId
+                      )}`
+                }
+                className="absolute inset-0 w-full h-full z-10"
+              ></Link>
             </div>
           </div>
         ))}

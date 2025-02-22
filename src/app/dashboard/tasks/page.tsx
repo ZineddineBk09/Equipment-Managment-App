@@ -3,7 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { PlusCircle, Search } from "lucide-react";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,31 +34,39 @@ import { FIREBASE_COLLECTIONS } from "@/enums/collections";
 import { DeleteDialog } from "./components/DeleteDialog";
 import { CompleteTaskDialog } from "./components/ComplateTaskDialog";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useSearchParams } from "next/navigation";
 
 const statusBadge = (status: "scheduled" | "completed") => {
-  if (status === "completed") {
+  if (status.toLocaleLowerCase() === "completed") {
     return (
       <Badge variant="default" className="bg-green-500">
         Completed
       </Badge>
     );
-  } else if (status === "scheduled") {
+  } else if (status.toLocaleLowerCase() === "scheduled") {
     return (
       <Badge variant="default" className="bg-amber-500">
         Scheduled
       </Badge>
     );
   } else {
-    return <Badge variant="destructive">Unknows</Badge>;
+    return <Badge variant="destructive">Unknown</Badge>;
   }
 };
+
+const ITEMS_PER_PAGE = 10;
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  // read search from url query params
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
 
   const fetchTasks = async () => {
     try {
@@ -89,9 +103,54 @@ export default function TasksPage() {
     }
   };
 
+  // Add handler for batch deletion
+  const handleBatchDelete = async () => {
+    try {
+      await Promise.all(
+        selectedItems.map((id) =>
+          deleteDoc(doc(db, FIREBASE_COLLECTIONS.TASKS, id))
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: `Successfully deleted ${selectedItems.length} items`,
+      });
+
+      setSelectedItems([]); // Clear selection
+      fetchTasks(); // Refresh list
+    } catch (error) {
+      console.error("Error batch deleting:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete selected items",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add selection handlers
+  const toggleSelectAll = () => {
+    if (selectedItems.length === currentTasks.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(currentTasks.map((item) => item.id));
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedItems((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+    setSearchTerm(searchQuery);
+  }, [searchQuery]);
 
   const filteredTasks = tasks.filter((task) =>
     Object.values(task).some((value) =>
@@ -99,10 +158,10 @@ export default function TasksPage() {
     )
   );
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
   const currentTasks = filteredTasks.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
 
   const isCloseToDueDate = (dueDate: string) => {
     const due = new Date(dueDate);
@@ -117,11 +176,19 @@ export default function TasksPage() {
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Maintenance Tasks</h1>
-        <Button asChild>
-          <Link href="/dashboard/tasks/add">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add New Task
-          </Link>
-        </Button>
+
+        <div className="flex items-center space-x-2">
+          {selectedItems.length > 0 && (
+            <Button variant="destructive" onClick={handleBatchDelete}>
+              Delete Selected ({selectedItems.length})
+            </Button>
+          )}
+          <Button asChild>
+            <Link href="/dashboard/tasks/add">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add New Task
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center mb-4">
@@ -140,6 +207,13 @@ export default function TasksPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedItems.length === currentTasks.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
+                <TableHead>#</TableHead>
                 <TableHead>Equipment</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Due Date</TableHead>
@@ -149,16 +223,25 @@ export default function TasksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentTasks.map((task) => (
+              {currentTasks.map((task, index) => (
                 <TableRow
                   key={task.id}
                   className={
                     isCloseToDueDate(task.dueDate) &&
                     task.status !== "completed"
-                      ? "bg-red-100"
+                      ? "bg-red-100 hover:bg-red-100"
                       : ""
                   }
                 >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedItems.includes(task.id)}
+                      onCheckedChange={() => toggleSelectItem(task.id)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-bold">
+                    {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
+                  </TableCell>
                   <TableCell>
                     {task.equipment ? (
                       <div className="flex items-center space-x-3">
@@ -198,6 +281,7 @@ export default function TasksPage() {
                         <CompleteTaskDialog
                           task={task}
                           onUpdate={() => fetchTasks()}
+                          equipment={task.equipment}
                         />
                       )}
                     </div>

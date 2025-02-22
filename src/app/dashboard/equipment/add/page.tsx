@@ -42,6 +42,7 @@ const formSchema = z.object({
     message: "Location must be at least 2 characters.",
   }),
   status: z.enum(["active", "decommissioned", "maintenance"]),
+  assetType: z.enum(["hr", "km", "dav"]),
   operatingHours: z.string().refine((value) => parseFloat(value) >= 0, {
     message: "Operating hours must be a positive number.",
   }),
@@ -60,6 +61,7 @@ export default function AddEquipmentPage() {
       name: "",
       serialNumber: "",
       assetNumber: "",
+      assetType: "hr",
       location: "NBP",
       status: "active",
       operatingHours: "0",
@@ -76,6 +78,7 @@ export default function AddEquipmentPage() {
         name: values.name,
         serialNumber: values.serialNumber,
         assetNumber: values.assetNumber,
+        assetType: values.assetType,
         location: values.location,
         status: values.status,
         operatingHours: parseFloat(values.operatingHours),
@@ -100,6 +103,7 @@ export default function AddEquipmentPage() {
           },
         ],
         usage: [],
+        maintenances: [],
       });
 
       toast({
@@ -133,9 +137,9 @@ export default function AddEquipmentPage() {
                 <FormControl>
                   <Input placeholder="Enter equipment name" {...field} />
                 </FormControl>
-                <FormDescription>
+                {/* <FormDescription>
                   The name or model of the equipment.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -149,10 +153,10 @@ export default function AddEquipmentPage() {
                 <FormControl>
                   <Input placeholder="Enter serial number" {...field} />
                 </FormControl>
-                <FormDescription>
+                {/* <FormDescription>
                   The unique serial number of the equipment.
                 </FormDescription>
-                <FormMessage />
+                <FormMessage /> */}
               </FormItem>
             )}
           />
@@ -165,9 +169,9 @@ export default function AddEquipmentPage() {
                 <FormControl>
                   <Input placeholder="Enter asset number" {...field} />
                 </FormControl>
-                <FormDescription>
+                {/* <FormDescription>
                   The asset number of the equipment.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -181,9 +185,9 @@ export default function AddEquipmentPage() {
                 <FormControl>
                   <Input placeholder="Enter location" {...field} />
                 </FormControl>
-                <FormDescription>
+                {/* <FormDescription>
                   Where the equipment is located.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -211,19 +215,49 @@ export default function AddEquipmentPage() {
                     <SelectItem value="maintenance">Maintenance</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormDescription>
+                {/* <FormDescription>
                   The current status of the equipment.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name="assetType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Asset Type</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select equipment type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="hr">Hours</SelectItem>
+                    <SelectItem value="km">Km</SelectItem>
+                    <SelectItem value="dav">DAV</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* <FormDescription>
+                  The asset measurment type.
+                </FormDescription> */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="operatingHours"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Operating Hours</FormLabel>
+                <FormLabel>Maintenance Schedule</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter operating hours"
@@ -231,10 +265,10 @@ export default function AddEquipmentPage() {
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>
+                {/* <FormDescription>
                   The total operating hours of the equipment (in hours) until
                   next maintenance.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -251,9 +285,9 @@ export default function AddEquipmentPage() {
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>
+                {/* <FormDescription>
                   Provide a direct link to the equipment image.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}

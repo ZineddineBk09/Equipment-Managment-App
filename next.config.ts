@@ -13,6 +13,17 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    config.module.rules.push({
+      test: /\.(mp3|png|jpe?g|gif)$/i,
+      use: [
+        {
+          loader: "file-loader",
+        },
+      ],
+    });
+    return config;
+  },
 };
 
 export default nextConfig;

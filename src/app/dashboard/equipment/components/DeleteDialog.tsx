@@ -12,7 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { doc, deleteDoc } from "firebase/firestore";
+import {
+  doc,
+  deleteDoc,
+  query,
+  collection,
+  where,
+  getDoc,
+  getDocs,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Equipment } from "@/interfaces/equipment";
 import { FIREBASE_COLLECTIONS } from "@/enums/collections";
@@ -31,6 +39,26 @@ export function DeleteDialog({ equipment, onDelete }: DeleteDialogProps) {
 
     try {
       await deleteDoc(doc(db, FIREBASE_COLLECTIONS.EQUIPMENTS, equipment.id));
+      // Delete the associated equipment usage records
+      const equipmentUsageQuery = query(
+        collection(db, FIREBASE_COLLECTIONS.EQUIPMENT_USAGE),
+        where("equipmentId", "==", equipment.id)
+      );
+      const equipmentUsageSnap = await getDocs(equipmentUsageQuery);
+      equipmentUsageSnap.forEach(async (doc) => {
+        await deleteDoc(doc.ref);
+      });
+
+      // Delete the associated maintenance tasks
+      const taskQuery = query(
+        collection(db, FIREBASE_COLLECTIONS.TASKS),
+        where("equipmentId", "==", equipment.id)
+      );
+      const taskSnap = await getDocs(taskQuery);
+      taskSnap.forEach(async (doc) => {
+        await deleteDoc(doc.ref);
+      });
+
       toast({
         title: "Equipment deleted",
         description: "The equipment has been successfully deleted.",
@@ -60,15 +88,19 @@ export function DeleteDialog({ equipment, onDelete }: DeleteDialogProps) {
         <DialogHeader>
           <DialogTitle>Delete Equipment</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete this equipment? This action cannot be
-            undone.
+            Are you sure you want to delete this equipment? This action cannot
+            be undone.
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
             {isDeleting ? "Deleting..." : "Delete"}
           </Button>
         </div>

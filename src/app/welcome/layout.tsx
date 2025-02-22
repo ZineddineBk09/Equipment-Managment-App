@@ -37,9 +37,9 @@ export default function RootLayout({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="w-full flex h-screen">
       {!pathname.includes("welcome") && <Sidebar />}
-      <main className="flex-1 overflow-y-auto bg-background">
+      <main className="w-full flex-1 overflow-y-auto bg-background">
         <Navbar />
         {children}
       </main>

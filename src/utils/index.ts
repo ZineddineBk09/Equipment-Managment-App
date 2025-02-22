@@ -1,10 +1,19 @@
+import { Equipment, EquipmentUsage } from "@/interfaces/equipment";
 import { FirebaseTimeStamp } from "@/interfaces/firebase";
+import { collection, getDocs, getDoc, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { doc } from "firebase/firestore";
+import { FIREBASE_COLLECTIONS } from "@/enums/collections";
+import { toast } from "@/hooks/use-toast";
 
 export const calculateMaintenanceDate = (
   createdAt: FirebaseTimeStamp | string,
   operatingHours: number
 ): { date: string; daysLeft: number } => {
-  const createdDate = createdAt instanceof Object ? new Date(createdAt.seconds * 1000) : new Date(createdAt);
+  const createdDate =
+    createdAt instanceof Object
+      ? new Date(createdAt.seconds * 1000)
+      : new Date(createdAt);
   const maintenanceIntervalDays = operatingHours / 24; // Convert hours to days
   const maintenanceDate = new Date(createdDate);
   maintenanceDate.setDate(createdDate.getDate() + maintenanceIntervalDays);
@@ -15,4 +24,81 @@ export const calculateMaintenanceDate = (
     date: new Date().toISOString()?.split("T")[0] || "",
     daysLeft: daysLeft,
   };
+};
+
+export const formatHours = (hours: number, unit?: string): string => {
+  if (unit == "hr" && hours >= 24) {
+    return `${(hours / 24).toFixed(0)} days`;
+  }
+  return `${hours.toFixed(2)} ${unit || "hr"}`;
+};
+
+export const calculateRemainingHours = async (
+  equipment: Equipment
+): Promise<{ hoursLeft: number; percentageLeft: number }> => {
+  const equipmentUsageQuery = query(
+    collection(db, FIREBASE_COLLECTIONS.EQUIPMENT_USAGE),
+    where("equipmentId", "==", equipment.id)
+  );
+  const equipmentUsageSnap = await getDocs(equipmentUsageQuery);
+  const usage = equipmentUsageSnap.docs.map((doc) => doc.data())[0]
+    .usage as EquipmentUsage[];
+
+  if (!usage || usage.length === 0) {
+    return {
+      hoursLeft: equipment.operatingHours,
+      percentageLeft: 100,
+    };
+  }
+
+  // Calculate total hours worked from usage array
+  const totalHoursWorked = usage.reduce(
+    (total, record) => total + (record.hoursWorked || 0),
+    0
+  );
+
+  // Calculate remaining hours
+  const hoursLeft = Math.max(0, equipment.operatingHours - totalHoursWorked);
+
+  // Calculate percentage of hours remaining
+  const percentageLeft = Math.round(
+    (hoursLeft / equipment.operatingHours) * 100
+  );
+
+  return {
+    hoursLeft,
+    percentageLeft,
+  };
+};
+
+export const playNotificationSound = async (
+  audioRef: React.MutableRefObject<HTMLAudioElement | null>
+) => {
+  try {
+    if (audioRef.current) {
+      // Reset the audio to ensure it plays every time
+      audioRef.current.currentTime = 0;
+      // Use the play() method within a user interaction or after a Promise
+      await audioRef.current.play();
+      toast({
+        title: "New Notification",
+      });
+    }
+  } catch (error) {
+    console.error("Error playing notification sound:", error);
+  }
+};
+
+export const getTimeCategory = (dateStr: string) => {
+  const now = new Date();
+  const targetDate = new Date(dateStr);
+  const diffMs = targetDate.getTime() - now.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return "overdue";
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "24h";
+  if (diffDays === 2) return "48h";
+  if (diffDays <= 7) return "1week";
+  return null;
 };

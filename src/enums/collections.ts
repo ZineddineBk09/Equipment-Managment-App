@@ -3,4 +3,5 @@ export const FIREBASE_COLLECTIONS = {
   TASKS: "tasks",
   EQUIPMENT_USAGE: "equipmentUsage",
   USERS: "users",
+  REPORTS: "reports",
 };

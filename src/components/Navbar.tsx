@@ -14,11 +14,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationsPanel } from "./NotificationPanel";
 import { logout } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/hooks/use-user";
 
 export function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isWelcomePage = pathname.includes("welcome");
   const { user, loading } = useUser();
   const handleLogout = async () => {
     await logout();
@@ -28,9 +30,15 @@ export function Navbar() {
   return (
     <nav className="border-b bg-background">
       <div className="w-full justify-between ml-auto container flex h-16 items-center px-4">
-        <Link href="/" className="flex items-center space-x-2">
-          {/* <span className="text-2xl font-bold">EquipManager</span> */}
-        </Link>
+        {isWelcomePage && (
+          <Link
+            href="/"
+            className="absolute top-2 left-4 flex items-center space-x-2"
+          >
+            <img src="/logo-removebg.png" alt="" className="h-12 w-12" />
+            <h1 className="text-lg font-bold truncate">ResenixPro</h1>
+          </Link>
+        )}
         <div className="ml-auto flex items-center space-x-4">
           <Button variant="ghost" size="icon" onClick={() => {}}>
             <Globe className="h-7 w-7" />

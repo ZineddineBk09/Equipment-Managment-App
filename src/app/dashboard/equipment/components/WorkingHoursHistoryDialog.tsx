@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogTrigger,
@@ -22,11 +22,14 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { FIREBASE_COLLECTIONS } from "@/enums/collections";
 import { History } from "lucide-react";
+import { Equipment } from "@/interfaces/equipment";
 
 export function WorkingHoursHistoryDialog({
-  equipmentId,
+  equipment,
+  onUpdate,
 }: {
-  equipmentId: string;
+  equipment: Equipment;
+  onUpdate: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState<
@@ -42,7 +45,7 @@ export function WorkingHoursHistoryDialog({
       try {
         const usageQuery = query(
           collection(db, FIREBASE_COLLECTIONS.EQUIPMENT_USAGE),
-          where("equipmentId", "==", equipmentId)
+          where("equipmentId", "==", equipment.id)
         );
         const querySnapshot = await getDocs(usageQuery);
 
@@ -57,6 +60,8 @@ export function WorkingHoursHistoryDialog({
                 new Date(a.timestamp).getTime()
             )
           );
+
+          onUpdate();
         }
       } catch (error) {
         console.error("Error fetching usage history:", error);
@@ -66,7 +71,17 @@ export function WorkingHoursHistoryDialog({
     };
 
     fetchHistory();
-  }, [isOpen, equipmentId]);
+  }, [isOpen, equipment.id]);
+
+  const getUnit = useMemo(
+    () =>
+      equipment.assetType === "hr"
+        ? "hours"
+        : equipment.assetType === "km"
+        ? "Kilometers"
+        : "DAV",
+    [equipment.assetType]
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -78,7 +93,9 @@ export function WorkingHoursHistoryDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Equipment Usage History</DialogTitle>
-          <DialogDescription>Daily logged operating hours.</DialogDescription>
+          <DialogDescription>
+            Daily logged operating {getUnit}.
+          </DialogDescription>
         </DialogHeader>
         <div className="max-h-80 overflow-auto">
           {loading ? (
@@ -90,7 +107,7 @@ export function WorkingHoursHistoryDialog({
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Hours Worked</TableHead>
+                  <TableHead className="capitalize">{getUnit} Worked</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -99,7 +116,7 @@ export function WorkingHoursHistoryDialog({
                     <TableCell>
                       {new Date(entry.date).toLocaleDateString()}
                     </TableCell>
-                    <TableCell>{entry.hoursWorked} hrs</TableCell>
+                    <TableCell>{entry.hoursWorked} {getUnit}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

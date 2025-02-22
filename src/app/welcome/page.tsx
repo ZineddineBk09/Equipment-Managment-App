@@ -26,44 +26,45 @@ const pageSections = [
     href: "/dashboard",
   },
   {
+    title: "Finances",
+    subTitle: "Track Finances and Revenue",
+    icon: <DollarSign />,
+  },
+  {
     title: "Invoices",
     subTitle: "Invoices and Payments",
     icon: <FileText />,
   },
+
+  // Finance
+  // Operations
+  // Warehouse
+  // JM
+  // QHSE
   {
-    title: "Equipment",
-    subTitle: "Manage All Equipment",
-    icon: <PencilRuler />,
-  },
-  {
-    title: "Sales",
-    subTitle: "Track Sales and Revenue",
+    title: "Finance",
+    subTitle: "Track Finances and Revenue",
     icon: <DollarSign />,
   },
   {
-    title: "Customers",
-    subTitle: "Manage Customer Relationships",
-    icon: <Users />,
-  },
-  {
-    title: "Reports",
-    subTitle: "Generate Custom Reports",
+    title: "Operations",
+    subTitle: "Manage Operations and Logistics",
     icon: <ClipboardList />,
   },
   {
-    title: "Settings",
-    subTitle: "Customize Your Dashboard",
+    title: "Warehouse",
+    subTitle: "Inventory and Stock Management",
     icon: <Wrench />,
   },
   {
-    title: "Alerts",
-    subTitle: "Recent Alerts and Notifications",
-    icon: <AlertCircle />,
+    title: "JM",
+    subTitle: "Job Management and Scheduling",
+    icon: <PencilRuler />,
   },
   {
-    title: "Feedback",
-    subTitle: "Send Us Your Feedback",
-    icon: <CheckCircle />,
+    title: "QHSE",
+    subTitle: "Quality, Health, Safety, and Environment",
+    icon: <Users />,
   },
 ];
 
@@ -103,7 +104,9 @@ export default function WelcomePage() {
                 </div>
               </div>
             </CardHeader>
-            {section?.href && <Link href={section?.href} className="absolute inset-0"></Link>}
+            {section?.href && (
+              <Link href={section?.href} className="absolute inset-0"></Link>
+            )}
           </Card>
         ))}
 

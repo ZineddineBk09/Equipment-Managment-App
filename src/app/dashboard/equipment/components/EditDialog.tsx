@@ -217,7 +217,7 @@ export function EditDialog({ equipment, onUpdate }: EditDialogProps) {
             )} />
             <FormField control={form.control} name="operatingHours" render={({ field }) => (
               <FormItem>
-                <FormLabel>Operating Hours</FormLabel>
+                <FormLabel>Maintenance Schedule</FormLabel>
                 <FormControl><Input type="number" placeholder="Enter operating hours" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>

@@ -12,18 +12,29 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
+import {
+  arrayUnion,
+  collection,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Task } from "@/interfaces/task";
 import { FIREBASE_COLLECTIONS } from "@/enums/collections";
+import { Equipment } from "@/interfaces/equipment";
 
 interface CompleteTaskDialogProps {
   task: Task;
+  equipment: Equipment;
   onUpdate: () => void;
 }
 
 export function CompleteTaskDialog({
   task,
+  equipment,
   onUpdate,
 }: CompleteTaskDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -38,6 +49,38 @@ export function CompleteTaskDialog({
         status: "completed",
         completedAt: new Date().toISOString(), // Save completion timestamp
       });
+
+      // Update the equipment usage hours maintenance array (add maintenance complete date, previous working hours of equipment)
+      const equipmentUsageQuery = query(
+        collection(db, FIREBASE_COLLECTIONS.EQUIPMENT_USAGE),
+        where("equipmentId", "==", task.equipmentId)
+      );
+
+      const querySnapshot = await getDocs(equipmentUsageQuery);
+
+      if (querySnapshot.empty) {
+        const newUsageDocRef = doc(
+          collection(db, FIREBASE_COLLECTIONS.EQUIPMENT_USAGE)
+        );
+        await updateDoc(newUsageDocRef, {
+          equipmentId: task.equipmentId,
+          maintenances: arrayUnion({
+            maintenanceType: task.maintenanceType,
+            maintenanceDate: new Date().toISOString(),
+            previousHours: equipment.operatingHours,
+          }),
+        });
+      } else {
+        querySnapshot.forEach(async (doc) => {
+          await updateDoc(doc.ref, {
+            maintenances: arrayUnion({
+              maintenanceType: task.maintenanceType,
+              maintenanceDate: new Date().toISOString(),
+              previousHours: equipment.operatingHours,
+            }),
+          });
+        });
+      }
 
       toast({
         title: "Task Completed",
@@ -61,7 +104,7 @@ export function CompleteTaskDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" title='Complete Task'>
+        <Button variant="ghost" title="Complete Task">
           <CheckCircle className="text-green-500 text-xl" />
         </Button>
       </DialogTrigger>

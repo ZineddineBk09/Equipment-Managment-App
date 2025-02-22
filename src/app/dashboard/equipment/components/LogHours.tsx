@@ -35,7 +35,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { CalendarIcon, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Equipment } from "@/interfaces/equipment";
 import { FIREBASE_COLLECTIONS } from "@/enums/collections";
 import dayjs from "dayjs";

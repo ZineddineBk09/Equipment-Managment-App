@@ -26,11 +26,14 @@ import { deleteReport } from "@/lib/reports";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { DeleteDialog } from "./components/DeleteDialog";
+import { DateRange } from "react-day-picker";
+import { DateRangePicker } from "./components/DateRangePicker";
 
 export default function ReportsArchivePage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
     loadReports();
@@ -94,7 +97,20 @@ export default function ReportsArchivePage() {
       const searchTerms = searchQuery.toLowerCase().split(" ");
       const reportText =
         `${report.fileName} ${report.type} ${report.equipmentName}`.toLowerCase();
-      return searchTerms.every((term) => reportText.includes(term));
+      const matchesSearch = searchTerms.every((term) =>
+        reportText.includes(term)
+      );
+
+      // Date range filter
+      const isInDateRange =
+        dateRange?.from && dateRange?.to
+          ? isWithinInterval(new Date(report.generatedAt), {
+              start: dateRange.from,
+              end: dateRange.to,
+            })
+          : true;
+
+      return matchesSearch && isInDateRange;
     });
   };
 
@@ -123,6 +139,11 @@ export default function ReportsArchivePage() {
     return (
       reports.reduce((acc, report) => acc + report.fileSize, 0) / 1024 / 1024
     );
+  };
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setDateRange(undefined);
   };
 
   const groupedReports = groupReports(reports);
@@ -161,6 +182,16 @@ export default function ReportsArchivePage() {
             className="pl-8"
           />
         </div>
+        <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+        {(searchQuery || dateRange) && (
+          <Button
+            variant="ghost"
+            onClick={resetFilters}
+            className="text-sm text-muted-foreground"
+          >
+            Reset Filters
+          </Button>
+        )}
       </div>
 
       <Accordion type="single" collapsible className="w-full space-y-4">

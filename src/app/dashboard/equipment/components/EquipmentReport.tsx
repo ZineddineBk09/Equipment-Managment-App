@@ -20,14 +20,14 @@ import { uploadReport } from "@/lib/reports";
 
 const getUnitByAssetType = (assetType: string) => {
   switch (assetType?.toLowerCase()) {
-    case 'km':
-      return 'Kilometers';
-    case 'dav':
-      return 'Dav';
-    case 'hrs':
-      return 'Hours';
+    case "km":
+      return "Kilometers";
+    case "dav":
+      return "Dav";
+    case "hr":
+      return "Hours";
     default:
-      return 'Hours';
+      return "Hours";
   }
 };
 
@@ -118,14 +118,9 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
       // Report title and metadata
       doc.setFontSize(16);
       doc.setTextColor(51, 51, 51);
-      doc.text(
-        "Equipment Details Report",
-        doc.internal.pageSize.width / 2,
-        20,
-        {
-          align: "center",
-        }
-      );
+      doc.text("Working Order", doc.internal.pageSize.width / 2, 20, {
+        align: "center",
+      });
       doc.setFontSize(8);
       doc.text(
         `Generated on: ${format(new Date(), "PPP")}`,
@@ -142,8 +137,7 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
           (sum: any, record: any) => sum + (record.hoursWorked || 0),
           0
         ) || 0;
-        const unit = getUnitByAssetType(equipment.assetType);
-
+      const unit = getUnitByAssetType(equipment.assetType);
 
       autoTable(doc, {
         startY: 35,
@@ -152,7 +146,7 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
           ["Name", equipment.name || "N/A"],
           ["Serial Number", equipment.serialNumber || "N/A"],
           ["Asset Number", equipment.assetNumber || "N/A"],
-          ["Type", equipment.assetType || "N/A"],
+          ["Type", getUnitByAssetType(equipment.assetType) || "N/A"],
           ["Location", equipment.location || "N/A"],
           ["Status", equipment.status.toUpperCase() || "N/A"],
           ["Previous Reading", `${previousHours} ${unit}` || "N/A"],
@@ -161,10 +155,7 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
             "Next Reading for PMP",
             `${equipment.operatingHours} ${unit}` || "N/A",
           ],
-          [
-            `Remaining ${unit}`,
-            `${remainingHours.hoursLeft} ${unit}` || "N/A",
-          ],
+          [`Remaining ${unit}`, `${remainingHours.hoursLeft} ${unit}` || "N/A"],
         ],
         theme: "grid",
         styles: { fontSize: 8, cellPadding: 2 },
@@ -183,7 +174,7 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
 
         autoTable(doc, {
           startY: (doc as any).lastAutoTable.finalY + 5,
-          head: [["Date",  `Usage (${unit})`, `Cumulative (${unit})`]],
+          head: [["Date", `Usage (${unit})`, `Cumulative (${unit})`]],
           body: sortedUsage.map((entry: any, index) => {
             const cumulativeToDate = sortedUsage
               .slice(index)

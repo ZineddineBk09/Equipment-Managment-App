@@ -25,6 +25,7 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Task } from "@/interfaces/task";
 import { uploadReport } from "@/lib/reports";
+import { getUnitByAssetType } from "./EquipmentReport";
 
 export const getStatusColor = (status: string): number[] => {
   switch (status.toLowerCase()) {
@@ -71,7 +72,9 @@ export function ReportButton({ equipment }: { equipment: Equipment[] }) {
         0
       );
 
-      return `${totalActiveHours.toFixed(2)} hours`;
+      return `${totalActiveHours.toFixed(2)} ${getUnitByAssetType(
+        equipment.filter((eq) => eq.id === equipmentId)[0].assetType
+      )}`;
     } catch (error) {
       console.error("Error fetching usage data:", error);
       return "N/A";
@@ -189,108 +192,108 @@ export function ReportButton({ equipment }: { equipment: Equipment[] }) {
       for (const item of equipment) {
         doc.addPage();
 
-        // Equipment details header
-        doc.setFillColor(236, 240, 241);
-        doc.rect(0, 0, doc.internal.pageSize.width, 60, "F");
-        // Add equipment image
-        try {
-          // Load and add equipment image
-          const imageUrl = item.imageUrl || "/placeholder-image.jpg";
-          const response = await fetch(imageUrl);
-          const imageBlob = await response.blob();
-          const imageDataUrl = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(imageBlob);
-          });
+        // Simple header with equipment name and serial
+        doc.setFontSize(14);
+        doc.setTextColor(44, 62, 80);
+        doc.text(
+          `${item.name} - ${item.serialNumber}`,
+          doc.internal.pageSize.width / 2,
+          20,
+          { align: "center" }
+        );
 
-          doc.addImage(imageUrl as any, "JPEG", 14, 10, 40, 40);
+        // Equipment Details Table
+        const remainingHours = await calculateRemainingHours(item);
+        const cumulativeHours = await getEquipmentCumulativeHours(item.id);
+        const unit = item.assetType?.toLowerCase() || "hours";
 
-          // Equipment details next to image
-          doc.setFontSize(16);
-          doc.setTextColor(44, 62, 80);
-          doc.text(
+        autoTable(doc, {
+          startY: 30,
+          head: [["Equipment Details", "Value"]],
+          body: [
+            ["Asset Number", item.assetNumber || "N/A"],
+            ["Location", item.location || "N/A"],
+            ["Type", item.assetType?.toUpperCase() || "N/A"],
             [
-              `${item.name}`,
-              `Serial Number: ${item.serialNumber}`,
-              // `Status: ${item.status.toUpperCase()}`,
+              "Status",
+              {
+                content: item.status.toUpperCase(),
+                styles: {
+                  fillColor: getStatusColor(item.status),
+                  textColor: 255,
+                  fontStyle: "bold",
+                  halign: "center",
+                },
+              } as any,
             ],
-            64,
-            25
-          );
+            [
+              getUnitByAssetType(item.assetType),
+              `${item.operatingHours} ${unit}`,
+            ],
+            ["Cumulative Usage", cumulativeHours],
+            [
+              "Next Maintenance",
+              formatHours(remainingHours.hoursLeft, item.assetType),
+            ],
+          ],
+          theme: "grid",
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: 255,
+            fontStyle: "bold",
+          },
+        });
 
-          // Add status badge
-          const statusColor = getStatusColor(item.status);
-          doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-          doc.rect(64, 35, 30, 10, "F");
-          doc.setTextColor(44, 62, 80);
-          doc.setFontSize(8);
-          doc.text(item.status.toUpperCase(), 79, 41, { align: "center" });
-        } catch (error) {
-          console.error("Error loading equipment image:", error);
-          // Continue without image if there's an error
-          doc.text(`${item.name} - ${item.serialNumber}`, 14, 20);
-        }
-
+        // Maintenance History Table
         const maintenanceHistory = await getEquipmentMaintenanceHistory(
           item.id
         );
-        console.log("Maintenance History:", maintenanceHistory);
 
         if (maintenanceHistory.length > 0) {
-          const historyTableData = maintenanceHistory.map((record) => [
-            format(new Date(record.dueDate), "PP"),
-            record.maintenanceType,
-            record.status,
-            record.notes,
-            // `$${record.cost.toFixed(2)}`,
-            // record.notes,
-          ]);
-
           autoTable(doc, {
-            startY: 70,
+            startY: (doc as any).lastAutoTable.finalY + 5,
             head: [["Date", "Type", "Status", "Notes"]],
-            body: historyTableData,
+            body: maintenanceHistory.map((record) => [
+              format(new Date(record.dueDate), "PP"),
+              record.maintenanceType || "N/A",
+              {
+                content: record.status.toUpperCase(),
+                styles: {
+                  fillColor: getStatusColor(record.status),
+                  textColor: 255,
+                  fontStyle: "bold",
+                  halign: "center",
+                },
+              },
+              record.notes || "N/A",
+            ]) as any,
             theme: "striped",
-            styles: {
-              fontSize: 8,
-              cellPadding: 4,
-            },
-            columnStyles: {
-              0: { cellWidth: 25 },
-              // 2: { cellWidth: 20 },
-              3: { cellWidth: 50 },
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: {
+              fillColor: [41, 128, 185],
+              textColor: 255,
             },
           });
 
-          // Add statistics
-          // const totalCost = maintenanceHistory.reduce(
-          //   (sum, record) => sum + record.cost,
-          //   0
-          // );
-          const stats = [
-            `Total Maintenance Count: ${maintenanceHistory.length}`,
-            // `Total Maintenance Cost: $${totalCost.toFixed(2)}`,
-            // `Average Cost per Maintenance: $${(
-            //   totalCost / maintenanceHistory.length
-            // ).toFixed(2)}`,
-          ];
-
-          doc.setFontSize(10);
-          stats.forEach((stat, index) => {
-            doc.text(
-              stat,
-              14,
-              (doc as any).lastAutoTable.finalY + 20 + index * 7
-            );
-          });
+          // Add maintenance statistics
+          doc.setFontSize(8);
+          doc.text(
+            `Total Maintenance Tasks: ${maintenanceHistory.length}`,
+            14,
+            (doc as any).lastAutoTable.finalY + 5
+          );
         } else {
-          doc.setFontSize(12);
-          doc.text("No maintenance history available", 14, 70);
+          doc.setFontSize(10);
+          doc.text(
+            "No maintenance history available",
+            14,
+            (doc as any).lastAutoTable.finalY + 10
+          );
         }
       }
 
-      // Add footer to each page
+      // Add page numbers
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -304,12 +307,11 @@ export function ReportButton({ equipment }: { equipment: Equipment[] }) {
         );
       }
 
-      // Convert PDF to blob
+      // Save and upload
+      const fileName = `equipment-report-${format(new Date(), "yyyy-MM-dd")}`;
+      doc.save(`${fileName}.pdf`);
+
       const pdfBlob = doc.output("blob");
-
-      doc.save(`equipment-report-${format(new Date(), "yyyy-MM-dd")}.pdf`);
-
-      // Upload to Supabase and save metadata
       await uploadReport(pdfBlob, {
         type: "general",
         generatedBy: "admin",

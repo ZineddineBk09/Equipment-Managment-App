@@ -19,3 +19,9 @@ export interface EquipmentUsage {
   date: string;
   hoursWorked: number;
 }
+
+export interface EquipmentMaintenance {
+  maintenanceDate: string;
+  maintenanceType: string;
+  previousHours: number;
+}

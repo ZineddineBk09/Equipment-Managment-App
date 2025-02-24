@@ -18,7 +18,18 @@ import { Bar } from "react-chartjs-2";
 import { toPng } from "html-to-image";
 import { uploadReport } from "@/lib/reports";
 
-const getUnitByAssetType = (assetType: string) => {
+const getStatusColor = (status: string): number[] => {
+  switch (status.toLowerCase()) {
+    case "completed":
+      return [34, 197, 94]; // #22c55e in RGB
+    case "scheduled":
+      return [245, 158, 11]; // #f59e0b in RGB
+    default:
+      return [156, 163, 175]; // Default gray
+  }
+};
+
+export const getUnitByAssetType = (assetType: string) => {
   switch (assetType?.toLowerCase()) {
     case "km":
       return "Kilometers";
@@ -29,6 +40,10 @@ const getUnitByAssetType = (assetType: string) => {
     default:
       return "Hours";
   }
+};
+
+const filterTasksStatusCount = (tasks: Task[], status: string) => {
+  return tasks.filter((task) => task.status === status).length;
 };
 
 export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
@@ -166,6 +181,51 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
         },
       });
 
+      // Tasks History Table
+      if (tasks.length > 0) {
+        autoTable(doc, {
+          startY: (doc as any).lastAutoTable.finalY + 5,
+          head: [
+            ["Due Date", "Materials used", "Qty", "Unit", "Status", "Notes"],
+          ],
+          body: tasks.map((task) => [
+            format(new Date(task.dueDate), "PP"),
+            task.resources || "N/A",
+            task.quantity || "N/A",
+            task.unit || "N/A",
+            {
+              content: task.status.toUpperCase(),
+              styles: {
+                fillColor: getStatusColor(task.status),
+                textColor: 255,
+                fontStyle: "bold",
+                halign: "center",
+              },
+            },
+            task.notes || "N/A",
+          ]) as any,
+          theme: "striped",
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: 255,
+          },
+        });
+
+        // Add statistics
+        doc.setFontSize(8);
+        doc.text(
+          `Total Maintenance Tasks: ${
+            tasks.length
+          } (Completed: ${filterTasksStatusCount(
+            tasks,
+            "completed"
+          )}, Scheduled: ${filterTasksStatusCount(tasks, "scheduled")})`,
+          14,
+          (doc as any).lastAutoTable.finalY + 5
+        );
+      }
+
       // Working Hours History Table
       if (usageData.usage?.length > 0) {
         const sortedUsage = [...usageData.usage].sort(
@@ -173,7 +233,7 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
         );
 
         autoTable(doc, {
-          startY: (doc as any).lastAutoTable.finalY + 5,
+          startY: (doc as any).lastAutoTable.finalY + 15,
           head: [["Date", `Usage (${unit})`, `Cumulative (${unit})`]],
           body: sortedUsage.map((entry: any, index) => {
             const cumulativeToDate = sortedUsage
@@ -192,34 +252,6 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
             textColor: 255,
           },
         });
-      }
-
-      // Tasks History Table
-      if (tasks.length > 0) {
-        autoTable(doc, {
-          startY: (doc as any).lastAutoTable.finalY + 5,
-          head: [["Due Date", "Type", "Status", "Notes"]],
-          body: tasks.map((task) => [
-            format(new Date(task.dueDate), "PP"),
-            task.maintenanceType || "N/A",
-            task.status || "N/A",
-            task.notes || "N/A",
-          ]),
-          theme: "striped",
-          styles: { fontSize: 8, cellPadding: 2 },
-          headStyles: {
-            fillColor: [41, 128, 185],
-            textColor: 255,
-          },
-        });
-
-        // Add statistics
-        doc.setFontSize(8);
-        doc.text(
-          `Total Maintenance Tasks: ${tasks.length}`,
-          14,
-          (doc as any).lastAutoTable.finalY + 5
-        );
       }
 
       // Add footer

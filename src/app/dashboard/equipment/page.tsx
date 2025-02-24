@@ -172,6 +172,7 @@ export default function EquipmentPage() {
       const getRemainingHours = async () => {
         const equipmentWithRemainingHours = await Promise.all(
           equipment.map(async (item) => {
+            console.log("Item:", item);
             const remainingHours = await calculateRemainingHours(item);
             return {
               ...item,
@@ -214,7 +215,7 @@ export default function EquipmentPage() {
               if (existingTasks.empty) {
                 // Only create new task if none exists
                 const taskData = {
-                  maintenanceType: "Maintenance",
+                  maintenanceType: "Automated",
                   dueDate: new Date().toISOString(),
                   notes: `Perform maintenance for ${item.name}`,
                   status: "Scheduled",
@@ -326,7 +327,7 @@ export default function EquipmentPage() {
             <TableHead>Serial Number</TableHead>
             <TableHead>Location</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Maintenance Due Date</TableHead>
+            <TableHead>Maintenance Schedule</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>

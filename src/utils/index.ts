@@ -1,4 +1,8 @@
-import { Equipment, EquipmentUsage } from "@/interfaces/equipment";
+import {
+  Equipment,
+  EquipmentMaintenance,
+  EquipmentUsage,
+} from "@/interfaces/equipment";
 import { FirebaseTimeStamp } from "@/interfaces/firebase";
 import { collection, getDocs, getDoc, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -43,6 +47,8 @@ export const calculateRemainingHours = async (
   const equipmentUsageSnap = await getDocs(equipmentUsageQuery);
   const usage = equipmentUsageSnap.docs.map((doc) => doc.data())[0]
     .usage as EquipmentUsage[];
+  const maintenances = equipmentUsageSnap.docs.map((doc) => doc.data())[0]
+    .maintenances as EquipmentMaintenance[];
 
   if (!usage || usage.length === 0) {
     return {
@@ -59,6 +65,9 @@ export const calculateRemainingHours = async (
 
   // Calculate remaining hours
   const hoursLeft = Math.max(0, equipment.operatingHours - totalHoursWorked);
+  const previousMaintenancesHours = maintenances
+    .filter((maintenance) => maintenance.maintenanceType === "Maintenance")
+    .reduce((total, record) => total + (record.previousHours || 0), 0);
 
   // Calculate percentage of hours remaining
   const percentageLeft = Math.round(
@@ -66,7 +75,7 @@ export const calculateRemainingHours = async (
   );
 
   return {
-    hoursLeft,
+    hoursLeft: hoursLeft + previousMaintenancesHours,
     percentageLeft,
   };
 };

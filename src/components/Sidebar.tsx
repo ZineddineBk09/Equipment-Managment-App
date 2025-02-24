@@ -48,7 +48,7 @@ export function Sidebar() {
               className={cn(
                 "w-full justify-start",
                 pathname === item.href
-                  ? "bg-gray-900 text-white"
+                  ? "bg-gray-700 text-white"
                   : "text-gray-300 hover:bg-gray-700 hover:text-white"
               )}
             >

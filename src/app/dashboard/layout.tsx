@@ -36,11 +36,14 @@ export default function RootLayout({
     const equipmentQuery = query(collection(db, "equipments"));
 
     const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
-      playNotificationSound(audioRef);
+      // if there is some task that is due today, play notification sound
+      const tasks = snapshot.docs.map((doc) => doc.data());
+      if (tasks.length > 0) playNotificationSound(audioRef);
     });
 
     const unsubscribeEquipment = onSnapshot(equipmentQuery, (snapshot) => {
-      playNotificationSound(audioRef);
+      const equipments = snapshot.docs.map((doc) => doc.data());
+      if (equipments.length > 0) playNotificationSound(audioRef);
     });
 
     return () => {

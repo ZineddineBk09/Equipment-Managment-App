@@ -45,20 +45,26 @@ const logHoursSchema = z.object({
   date: z.date().refine((date) => date < new Date(), {
     message: "You can only select past dates.",
   }),
-  hoursWorked: z
-    .string()
-    .refine((value) => parseFloat(value) > 0, {
-      message: "Hours worked must be greater than 0.",
-    })
-    .refine((value) => parseFloat(value) <= 24, {
-      message: "Hours worked must be less than 24.",
-    }),
+  hoursWorked: z.string().refine((value) => parseFloat(value) > 0, {
+    message: "Must be greater than 0.",
+  }),
 });
 
 interface LogHoursDialogProps {
   equipment: Equipment;
   onUpdate: () => void;
 }
+
+const getTitle = (unit: string) => {
+  switch (unit) {
+    case "km":
+      return "Kilometers";
+    case "dav":
+      return "Dav";
+    default:
+      return "Hours";
+  }
+};
 
 export function LogHoursDialog({ equipment, onUpdate }: LogHoursDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -135,8 +141,12 @@ export function LogHoursDialog({ equipment, onUpdate }: LogHoursDialogProps) {
       }
 
       toast({
-        title: "Hours logged",
-        description: `Logged ${hours} hours for ${equipment.name} on ${selectedDate}.`,
+        title: `Logged ${hours} ${getTitle(
+          equipment.assetType
+        ).toLocaleLowerCase()}`,
+        description: `Logged ${hours} ${getTitle(
+          equipment.assetType
+        ).toLocaleLowerCase()} for ${equipment.name} on ${selectedDate}.`,
       });
 
       setIsOpen(false);
@@ -145,7 +155,9 @@ export function LogHoursDialog({ equipment, onUpdate }: LogHoursDialogProps) {
       console.error("Error logging hours:", error);
       toast({
         title: "Error",
-        description: "Failed to log working hours. Please try again.",
+        description: `Failed to log ${getTitle(
+          equipment.assetType
+        ).toLocaleLowerCase()}. Please try again.`,
         variant: "destructive",
       });
     } finally {
@@ -162,7 +174,9 @@ export function LogHoursDialog({ equipment, onUpdate }: LogHoursDialogProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Log Working Hours</DialogTitle>
+          <DialogTitle>
+            Log {getTitle(equipment.assetType)} for {equipment.name}
+          </DialogTitle>
           <DialogDescription>
             Enter the hours worked for{" "}
             <strong>
@@ -202,11 +216,13 @@ export function LogHoursDialog({ equipment, onUpdate }: LogHoursDialogProps) {
               name="hoursWorked"
               render={({ field }) => (
                 <FormItem className="w-full">
-                  <FormLabel>Hours Worked</FormLabel>
+                  <FormLabel>{getTitle(equipment.assetType)}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
-                      placeholder="Enter hours worked"
+                      placeholder={`Enter ${getTitle(
+                        equipment.assetType
+                      ).toLowerCase()}`}
                       {...field}
                     />
                   </FormControl>

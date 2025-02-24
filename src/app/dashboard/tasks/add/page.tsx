@@ -40,6 +40,15 @@ const formSchema = z.object({
   dueDate: z.date({
     required_error: "Please select a due date.",
   }),
+  resources: z.string().min(2, {
+    message: "Resources must be at least 2 characters.",
+  }),
+  quantity: z
+    .string()
+    .refine((value) => !isNaN(Number(value)), "Quantity must be a number."),
+  unit: z.string().min(2, {
+    message: "Unit must be at least 2 characters.",
+  }),
   notes: z.string(),
 });
 
@@ -54,6 +63,9 @@ export default function AddMaintenanceTaskPage() {
       equipmentId: "",
       maintenanceType: "",
       dueDate: new Date(),
+      resources: "",
+      quantity: "0",
+      unit: "",
       notes: "",
     },
   });
@@ -94,11 +106,9 @@ export default function AddMaintenanceTaskPage() {
     try {
       // Save maintenance task to Firestore
       await addDoc(collection(db, FIREBASE_COLLECTIONS.TASKS), {
-        equipmentId: values.equipmentId,
-        maintenanceType: values.maintenanceType,
+        ...values,
         dueDate: values.dueDate.toISOString(),
-        notes: values.notes,
-        status: "scheduled", // Default status
+        status: "scheduled",
         createdAt: new Date().toISOString(),
       });
 
@@ -222,6 +232,50 @@ export default function AddMaintenanceTaskPage() {
               </FormItem>
             )}
           />
+
+          <div className="w-full flex justify-between gap-x-2">
+            <FormField
+              control={form.control}
+              name="resources"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Resources</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter resources" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="quantity"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Quantity</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter quantity" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="unit"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Unit</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter unit" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
           <FormField
             control={form.control}
             name="notes"
@@ -229,11 +283,7 @@ export default function AddMaintenanceTaskPage() {
               <FormItem>
                 <FormLabel>Notes</FormLabel>
                 <FormControl>
-                  <Textarea
-                    rows={5}
-                    placeholder="Enter notes"
-                    {...field}
-                  />
+                  <Textarea rows={5} placeholder="Enter notes" {...field} />
                 </FormControl>
                 <FormDescription>
                   Add any notes or instructions for the technicians.

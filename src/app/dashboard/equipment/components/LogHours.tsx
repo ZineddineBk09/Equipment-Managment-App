@@ -172,7 +172,7 @@ export function LogHoursDialog({ equipment, onUpdate }: LogHoursDialogProps) {
           <Clock className="text-blue-500 text-xl" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             Log {getTitle(equipment.assetType)} for {equipment.name}

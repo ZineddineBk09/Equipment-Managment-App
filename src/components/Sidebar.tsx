@@ -13,6 +13,7 @@ import {
   HardHat,
   ChevronLeft,
   LogOut,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ const navItems = [
   { name: "Equipment List", href: "/dashboard/equipment", icon: Clipboard },
   { name: "Maintenance Tasks", href: "/dashboard/tasks", icon: FileText },
   { name: "Archive", href: "/dashboard/reports", icon: FolderTree },
+  // { name: "Finances", href: "/dashboard/finances", icon: DollarSign },
   // { name: "Reports", href: "/reports", icon: FileText },
   // { name: "Users & Permissions", href: "/users", icon: Users },
   // { name: "Notifications", href: "/notifications", icon: Bell },
@@ -58,12 +60,7 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
-      {/* <div className="w-full mr-auto border-t border-gray-700 py-4">
-        <Button variant="outline" className="text-red-500 bg-transparent border-none ml-auto w-full">
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
-        </Button>
-      </div> */}
     </div>
   );
 }
+

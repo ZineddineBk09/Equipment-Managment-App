@@ -29,6 +29,7 @@ import { db } from "@/lib/firebase"; // Import Firestore
 import { useEffect, useState } from "react";
 import { FIREBASE_COLLECTIONS } from "@/enums/collections";
 import { Equipment } from "@/interfaces/equipment";
+import { Plus } from "lucide-react";
 
 const formSchema = z.object({
   equipmentId: z.string().min(1, {
@@ -40,15 +41,19 @@ const formSchema = z.object({
   dueDate: z.date({
     required_error: "Please select a due date.",
   }),
-  resources: z.string().min(2, {
-    message: "Resources must be at least 2 characters.",
-  }),
-  quantity: z
-    .string()
-    .refine((value) => !isNaN(Number(value)), "Quantity must be a number."),
-  unit: z.string().min(2, {
-    message: "Unit must be at least 2 characters.",
-  }),
+  resources: z.array(
+    z.object({
+      resource: z.string().min(2, {
+        message: "Resource must be at least 2 characters.",
+      }),
+      quantity: z
+        .string()
+        .refine((value) => !isNaN(Number(value)), "Quantity must be a number."),
+      unit: z.string().min(2, {
+        message: "Unit must be at least 2 characters.",
+      }),
+    })
+  ),
   notes: z.string(),
 });
 
@@ -63,9 +68,7 @@ export default function AddMaintenanceTaskPage() {
       equipmentId: "",
       maintenanceType: "",
       dueDate: new Date(),
-      resources: "",
-      quantity: "0",
-      unit: "",
+      resources: [],
       notes: "",
     },
   });
@@ -101,6 +104,28 @@ export default function AddMaintenanceTaskPage() {
 
     fetchEquipment();
   }, []);
+
+  const handleAddResource = (
+    resource: string,
+    quantity: string,
+    unit: string
+  ) => {
+    form.setValue("resources", [
+      ...form.getValues("resources"),
+      { resource, quantity, unit },
+    ]);
+  };
+
+  const handleUpdateResourceField = (
+    index: number,
+    field: string,
+    value: string
+  ) => {
+    const resources = form.getValues("resources");
+    //@ts-ignore
+    resources[index][field] = value;
+    form.setValue("resources", resources);
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -232,48 +257,64 @@ export default function AddMaintenanceTaskPage() {
               </FormItem>
             )}
           />
-
-          <div className="w-full flex justify-between gap-x-2">
-            <FormField
-              control={form.control}
-              name="resources"
-              render={({ field }) => (
+          <div className="w-full flex flex-col gap-y-2">
+            {form.watch("resources").map((resource, index) => (
+              <div key={index} className="w-full flex justify-between gap-x-2">
                 <FormItem className="w-full">
                   <FormLabel>Resources</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter resources" {...field} />
+                    <Input
+                      placeholder="Enter resources"
+                      onChange={(e) =>
+                        handleUpdateResourceField(
+                          index,
+                          "resource",
+                          e.target.value
+                        )
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
 
-            <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
                 <FormItem className="w-full">
                   <FormLabel>Quantity</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter quantity" {...field} />
+                    <Input
+                      placeholder="Enter quantity"
+                      onChange={(e) =>
+                        handleUpdateResourceField(
+                          index,
+                          "quantity",
+                          e.target.value
+                        )
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="unit"
-              render={({ field }) => (
+
                 <FormItem className="w-full">
                   <FormLabel>Unit</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter unit" {...field} />
+                    <Input
+                      placeholder="Enter unit"
+                      onChange={(e) =>
+                        handleUpdateResourceField(index, "unit", e.target.value)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
+              </div>
+            ))}
+            <Button
+              className="max-w-48"
+              variant={"outline"}
+              onClick={() => handleAddResource("", "", "")}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add Resource
+            </Button>
           </div>
 
           <FormField

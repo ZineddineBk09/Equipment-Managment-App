@@ -11,7 +11,9 @@ import {
   FileText,
   PencilRuler,
   Plus,
+  User,
   Users,
+  Users2,
   Wrench,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
@@ -28,13 +30,14 @@ const pageSections = [
   {
     title: "Finances",
     subTitle: "Track Finances and Revenue",
+    href: "/dashboard/finances",
     icon: <DollarSign />,
   },
-  {
-    title: "Invoices",
-    subTitle: "Invoices and Payments",
-    icon: <FileText />,
-  },
+  // {
+  //   title: "Invoices",
+  //   subTitle: "Invoices and Payments",
+  //   icon: <FileText />,
+  // },
 
   // Finance
   // Operations
@@ -42,9 +45,9 @@ const pageSections = [
   // JM
   // QHSE
   {
-    title: "Finance",
-    subTitle: "Track Finances and Revenue",
-    icon: <DollarSign />,
+    title: "HR",
+    subTitle: "Humain Resource Management",
+    icon: <Users2 />,
   },
   {
     title: "Operations",
@@ -111,7 +114,7 @@ export default function WelcomePage() {
         ))}
 
         {/* Add New Section Card */}
-        <Card
+        {/* <Card
           className={cn(
             "col-span-3 border-2 group hover:shadow-lg transition-all duration-200 cursor-pointer border-dashed",
             "flex flex-col items-center justify-center min-h-[200px]"
@@ -128,7 +131,7 @@ export default function WelcomePage() {
               Create a custom section for your dashboard
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );

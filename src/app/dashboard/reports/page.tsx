@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { format, isToday, isThisWeek, isThisMonth, isWithinInterval } from "date-fns";
+import {
+  format,
+  isToday,
+  isThisWeek,
+  isThisMonth,
+  isWithinInterval,
+} from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { Report } from "@/interfaces/report";
 import {
@@ -152,8 +158,8 @@ export default function ReportsArchivePage() {
 
   return (
     <div className="container mx-auto py-10 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-x-3">
+      <div className="xl:flex-row gap-y-2 flex-col flex justify-between items-start xl:items-center">
+        <div className="w-full xl:w-fit xl:flex-row flex-col flex items-start xl:items-center gap-y-1 gap-x-3">
           <h1 className="text-2xl font-bold">Reports Archive</h1>
           <Badge
             variant="default"
@@ -173,7 +179,7 @@ export default function ReportsArchivePage() {
             </Badge>
           )}
         </div>
-        <div className="relative w-72">
+        <div className="relative w-full xl:w-72">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search reports..."

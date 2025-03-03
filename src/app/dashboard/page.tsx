@@ -74,7 +74,7 @@ export default function DashboardPage() {
           </span>
         </h2>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Equipment Usage & Maintenance Trends</CardTitle>

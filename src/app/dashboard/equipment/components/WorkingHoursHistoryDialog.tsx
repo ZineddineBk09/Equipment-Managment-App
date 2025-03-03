@@ -90,7 +90,7 @@ export function WorkingHoursHistoryDialog({
           <History className="text-amber-500 text-xl" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Equipment Usage History</DialogTitle>
           <DialogDescription>

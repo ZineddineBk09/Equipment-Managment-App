@@ -172,7 +172,6 @@ export default function EquipmentPage() {
       const getRemainingHours = async () => {
         const equipmentWithRemainingHours = await Promise.all(
           equipment.map(async (item) => {
-            console.log("Item:", item);
             const remainingHours = await calculateRemainingHours(item);
             return {
               ...item,
@@ -221,6 +220,7 @@ export default function EquipmentPage() {
                   status: "Scheduled",
                   equipmentId: item.id,
                   createdAt: new Date().toISOString(),
+                  resources: [],
                 };
 
                 await Promise.all([

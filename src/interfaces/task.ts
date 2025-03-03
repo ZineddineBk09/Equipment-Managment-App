@@ -5,9 +5,11 @@ export interface Task {
   dueDate: string;
   equipmentId: string;
   maintenanceType: string;
-  resources: string;
-  quantity: string;
-  unit: string;
+  resources: {
+    resource: string;
+    unit: string;
+    quantity: string;
+  }[];
   notes: string;
   status: string;
   createdAt: string | FirebaseTimeStamp;

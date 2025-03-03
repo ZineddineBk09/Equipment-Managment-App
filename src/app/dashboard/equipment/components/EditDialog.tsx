@@ -164,7 +164,7 @@ export function EditDialog({ equipment, onUpdate }: EditDialogProps) {
           <PencilRuler className="text-amber-500 text-xl" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Equipment</DialogTitle>
           <DialogDescription>

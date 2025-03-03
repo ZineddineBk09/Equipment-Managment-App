@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSearchParams } from "next/navigation";
+import { EditDialog } from "./components/EditDialog";
 
 const statusBadge = (status: "scheduled" | "completed") => {
   if (status.toLocaleLowerCase() === "completed") {
@@ -169,7 +170,7 @@ export default function TasksPage() {
     const differenceInDays = Math.ceil(
       (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
-    return differenceInDays <= 7;
+    return differenceInDays <= 3;
   };
 
   return (
@@ -271,10 +272,7 @@ export default function TasksPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      {/* <EditDialog
-                                      equipment={item}
-                                      onUpdate={() => fetchEquipment()}
-                                    /> */}
+                      <EditDialog task={task} onUpdate={() => fetchTasks()} />
 
                       <DeleteDialog task={task} onDelete={() => fetchTasks()} />
                       {task.status !== "completed" && (

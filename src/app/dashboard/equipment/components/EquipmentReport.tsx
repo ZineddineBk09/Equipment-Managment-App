@@ -183,16 +183,13 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
 
       // Tasks History Table
       if (tasks.length > 0) {
-        autoTable(doc, {
-          startY: (doc as any).lastAutoTable.finalY + 5,
-          head: [
-            ["Due Date", "Materials used", "Qty", "Unit", "Status", "Notes"],
-          ],
-          body: tasks.map((task) => [
+        const body = tasks.map((task) => {
+          const resources = task.resources.map((resource) => [
+            "Admin",
             format(new Date(task.dueDate), "PP"),
-            task.resources || "N/A",
-            task.quantity || "N/A",
-            task.unit || "N/A",
+            resource.resource || "N/A",
+            resource.quantity || "N/A",
+            resource.unit || "N/A",
             {
               content: task.status.toUpperCase(),
               styles: {
@@ -203,7 +200,25 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
               },
             },
             task.notes || "N/A",
-          ]) as any,
+          ]);
+          return resources;
+        }) as any;
+
+        autoTable(doc, {
+          startY: (doc as any).lastAutoTable.finalY + 5,
+          head: [
+            [
+              "User",
+              "Due Date",
+              "Materials used",
+              "Qty",
+              "Unit",
+              "Status",
+              "Notes",
+            ],
+          ],
+
+          body: body.flat(),
           theme: "striped",
           styles: { fontSize: 8, cellPadding: 2 },
           headStyles: {
@@ -285,11 +300,11 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
       });
     } catch (error) {
       console.error("Error generating report:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate report. Please try again.",
-        variant: "destructive",
-      });
+      // toast({
+      //   title: "Error",
+      //   description: "Failed to generate report. Please try again.",
+      //   variant: "destructive",
+      // });
     } finally {
       setIsGenerating(false);
     }

@@ -68,7 +68,10 @@ export default function RootLayout({
       <Sidebar />
       <main className="flex-1 overflow-y-auto bg-background">
         <Navbar />
+        <main className="flex-1 overflow-y-auto px-2">
+
         {children}
+        </main>
       </main>
     </div>
   );

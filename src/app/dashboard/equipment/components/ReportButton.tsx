@@ -323,11 +323,11 @@ export function ReportButton({ equipment }: { equipment: Equipment[] }) {
       });
     } catch (error) {
       console.error("Error generating report:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate report. Please try again.",
-        variant: "destructive",
-      });
+      // toast({
+      //   title: "Error",
+      //   description: "Failed to generate report. Please try again.",
+      //   variant: "destructive",
+      // });
     } finally {
       setIsGenerating(false);
     }

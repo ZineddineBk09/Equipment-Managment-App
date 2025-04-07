@@ -71,28 +71,6 @@ import { fetchVendors } from "@/lib/firebase";
 import withAuth from "@/lib/hocs/withAuth";
 import { USER_ROLES, FIREBASE_RESOURCES } from "@/enums/resources";
 
-// Mock vendor data
-const vendors = [
-  {
-    id: "V001",
-    name: "ABC Supplies",
-    address: "123 Main St, Anytown, USA",
-    terms: "Net 30",
-  },
-  {
-    id: "V002",
-    name: "XYZ Corporation",
-    address: "456 Oak Ave, Somewhere, USA",
-    terms: "Net 45",
-  },
-  {
-    id: "V003",
-    name: "Global Tech",
-    address: "789 Pine Rd, Elsewhere, USA",
-    terms: "Net 60",
-  },
-];
-
 // Form schema
 const formSchema = z.object({
   prNumber: z.string().min(1, { message: "PR number is required" }),
@@ -245,101 +223,310 @@ function POGenerationPage() {
   const generatePDF = async (values: z.infer<typeof formSchema>) => {
     const doc = new jsPDF();
     const currentDate = format(new Date(), "yyyy-MM-dd");
-    // Add report header with logo and company info
-    doc.setFillColor(244, 244, 244);
-    doc.rect(0, 0, doc.internal.pageSize.width, 40, "F");
-    doc.addImage("/logo-removebg.png", "PNG", 14, 10, 30, 20);
-    doc.setFontSize(20);
-    doc.setTextColor(51, 51, 51);
-    doc.text("Purchase Order", doc.internal.pageSize.width / 2, 25, {
+    const selectedVendor = vendors.find((v) => v.id === values.vendor);
+
+    // ===== Document Setup =====
+    doc.setProperties({
+      title: `Purchase Order ${poNumber}`,
+    });
+    doc.setFont("helvetica", "normal");
+
+    // ===== Generate QR Code =====
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${poNumber}`;
+    
+    // ===== Header Section =====
+    // Company Logo (Left Side)
+    doc.addImage("/logo-report.png", "PNG", 15, 5, 30, 15);
+
+    // QR Code (Right Side)
+    doc.addImage(qrCodeUrl, "PNG", doc.internal.pageSize.width - 40, 5, 30, 30);
+
+    // Company details (Centered below logo and QR)
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    doc.text("OILINDUSTRYSUPPLIESSERVICESLIMITED", doc.internal.pageSize.width / 2, 25, {
+      align: "center"
+    });
+    doc.text("Aljizzer Street, Basra, 61002, Iraq", doc.internal.pageSize.width / 2, 30, {
+      align: "center"
+    });
+    doc.text("admin@oilindustrysupplieserviceslimited.com | +9647801552390", doc.internal.pageSize.width / 2, 35, {
+      align: "center"
+    });
+
+    // Document Title (Below company info)
+    doc.setFontSize(12);
+    //@ts-ignore
+    doc.setFont(undefined, "bold");
+    doc.text("PURCHASE ORDER", doc.internal.pageSize.width / 2, 45, {
       align: "center",
     });
-    doc.setFontSize(10);
-    doc.text(
-      `Generated on: ${format(new Date(), "PPP")}`,
-      doc.internal.pageSize.width - 14,
-      15,
-      { align: "right" }
-    );
 
-    // PO Details
+    // PO Number and Date (Below title)
+    doc.setFontSize(8);
+    //@ts-ignore
+    doc.setFont(undefined, "normal");
+    doc.text(`PO Number: #${poNumber}`, 15, 55);
+    doc.text(`Date: ${currentDate}`, doc.internal.pageSize.width - 15, 55, {
+      align: "right"
+    });
+
+    // Horizontal line separator
+    doc.setDrawColor(200, 200, 200);
+    doc.line(15, 60, doc.internal.pageSize.width - 15, 60);
+
+    // ===== Vendor & Ship To Sections =====
     autoTable(doc, {
-      startY: 50,
-      head: [["PO Number", "Date", "Vendor", "Payment Terms", "Delivery Date"]],
+      startY: 65,
       body: [
         [
-          poNumber,
-          currentDate,
-          vendors.find((v) => v.id === values.vendor)?.name,
-          values.paymentTerms,
-          values.deliveryDate,
+          { content: "VENDOR:", styles: { fontStyle: "bold", fontSize: 8 } },
+          { content: "SHIP TO:", styles: { fontStyle: "bold", fontSize: 8 } },
         ],
+        [
+          selectedVendor
+            ? `${selectedVendor.name}\n${selectedVendor.address}\n${selectedVendor.city}, ${selectedVendor.country}\n${selectedVendor.email}\n${selectedVendor.phone}`
+            : "Vendor not selected",
+          "OILINDUSTRYSUPPLIESSERVICESLIMITED\nAljizzer Street\nBasra, Basra, 61002\nIraq\nadmin@oilindustrysupplieserviceslimited.com\n+9647801552390",
+        ],
+        [
+          {
+            content: `Delivery date\nShipping method\nFreight Forwarding`,
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          {
+            content: "Shipping terms\nShipping cost to Umm Qasr Port Iraq",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+        ],
+        [values.deliveryDate, ""],
       ],
-      theme: "grid",
-      styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: "bold",
+      theme: "plain",
+      styles: {
+        fontSize: 8,
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
+        cellPadding: 1.5,
+      },
+      columnStyles: {
+        0: { cellWidth: 90 },
+        1: { cellWidth: 90 },
       },
     });
 
-    // Items Table
+    // ===== Items Table =====
+    doc.setFontSize(10);
+    //@ts-ignore
+    doc.text("ITEMS", 15, doc.lastAutoTable.finalY + 5);
+
     autoTable(doc, {
       //@ts-ignore
-      startY: doc.lastAutoTable.finalY + 10,
+      startY: doc.lastAutoTable.finalY + 8,
       head: [
-        [
-          "Material",
-          "Description",
-          "Quantity",
-          "Unit",
-          "Unit Cost",
-          "Line Total",
-        ],
+        ["Item", "Description", "Quantity", "Unit", "Unit Cost", "Line Total"],
       ],
-      body: values.items.map((item: any) => [
+      body: values.items.map((item) => [
         item.material,
         item.description,
         item.qty,
         item.unit,
-        item.unitCost,
-        item.lineTotal,
+        `USD ${parseFloat(item.unitCost).toFixed(2)}`,
+        `USD ${parseFloat(item.lineTotal).toFixed(2)}`,
       ]),
       theme: "grid",
-      styles: { fontSize: 9, cellPadding: 2 },
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+      },
       headStyles: {
-        fillColor: [41, 128, 185],
+        fillColor: [51, 51, 51],
         textColor: 255,
         fontStyle: "bold",
+        fontSize: 8,
+      },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 20 },
+        4: { halign: "right", cellWidth: 30 },
+        5: { halign: "right", cellWidth: 30 },
       },
     });
 
-    // Totals
+    // ===== Document Requirements & Payment Terms Section =====
+    doc.setFontSize(10);
+    doc.text(
+      "DOCUMENT REQUIRED (Foreign Supplier Only)",
+      15,
+      //@ts-ignore
+      doc.lastAutoTable.finalY + 5
+    );
+
+    const requiredDocs = [
+      { item: "Original Invoice & C.O.O", required: true },
+      { item: "Weight List/Packing List", required: true },
+      { item: "Warranty Certificate", required: true },
+      { item: "INSPECTIONS/TEST", required: true },
+      { item: "Manuals/Products Catalogue", required: true },
+      { item: "Attestation for Invoice & C.O.O", required: true },
+      { item: "Legalization for Invoice & C.O.O", required: true },
+      { item: "Original AWR / B/L", required: true },
+      { item: "Marine insurance against all risks", required: true },
+    ];
+
     autoTable(doc, {
       //@ts-ignore
-      startY: doc.lastAutoTable.finalY + 10,
-      head: [["Subtotal", "Tax Rate", "Tax Amount", "Shipping Cost", "Total"]],
+      startY: doc.lastAutoTable.finalY + 8,
       body: [
         [
-          values.subtotal,
-          values.taxRate,
-          values.taxAmount + "%",
-          values.shippingCost,
-          values.total,
+          {
+            content: "DOCUMENT REQUIREMENTS",
+            styles: {
+              fontStyle: "bold",
+              textColor: [255, 255, 255],
+              fillColor: [51, 51, 51],
+              fontSize: 8,
+            },
+            colSpan: 3,
+          },
+          {
+            content: "PAYMENT TERMS",
+            styles: {
+              fontStyle: "bold",
+              textColor: [255, 255, 255],
+              fillColor: [51, 51, 51],
+              fontSize: 8,
+            },
+            colSpan: 1,
+          },
+        ],
+        //@ts-ignore
+        ...requiredDocs.map((doc) => [
+          doc.item,
+          { content: "[YES]", styles: { fontStyle: "bold", fontSize: 8 } },
+          { content: "[yes]", styles: { fontStyle: "bold", fontSize: 8 } },
+          doc.item === "Original Invoice & C.O.O"
+            ? {
+                content: selectedVendor.terms,
+                styles: { fontStyle: "normal", fontSize: 8 },
+                rowSpan: requiredDocs.length,
+              }
+            : null,
+        ]),
+      ],
+      theme: "grid",
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+      },
+      headStyles: {
+        fillColor: [51, 51, 51],
+        textColor: 255,
+        fontStyle: "bold",
+        fontSize: 8,
+      },
+      columnStyles: {
+        0: { cellWidth: 70 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 70 },
+      },
+    });
+
+    // ===== Financial Summary =====
+    autoTable(doc, {
+      //@ts-ignore
+      startY: doc.lastAutoTable.finalY + 8,
+      body: [
+        [
+          {
+            content: "PQ Gross Value",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          {
+            content: `USD ${parseFloat(values.subtotal).toFixed(2)}`,
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          "Discount",
+          {
+            content: "USD 0.00",
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          "PQ Net Value",
+          {
+            content: `USD ${parseFloat(values.subtotal).toFixed(2)}`,
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          `Total VAT (${values.taxRate}%)`,
+          {
+            content: `USD ${parseFloat(values.taxAmount).toFixed(2)}`,
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          "Transportation in China",
+          {
+            content: "USD 0.00",
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          "Shipping to Iraq",
+          {
+            content: `USD ${parseFloat(values.shippingCost).toFixed(2)}`,
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          {
+            content: "Total Value",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          {
+            content: `USD ${parseFloat(values.total).toFixed(2)}`,
+            styles: { fontStyle: "bold", halign: "right", fontSize: 8 },
+          },
         ],
       ],
       theme: "grid",
-      styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: "bold",
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        0: { cellWidth: 110 },
+        1: { cellWidth: 70 },
       },
     });
 
-    doc.save(`purchase-order-${poNumber}.pdf`);
-  };
+    // ===== Footer =====
+    doc.setFontSize(7);
+    doc.text(
+      "THIS PURCHASE ORDER IS SUBJECT TO OILINDUSTRYSUPPLIESSERVICESLIMITED TERMS AND CONDITIONS AVAILABLE\n" +
+        "https://www.OILINDUSTRYSUPPLIESSERVICESLIMITED.com.pdf. ACCEPTANCE OF THIS PURCHASE ORDER BY THE SUPPLIER SHALL BE\n" +
+        "DEEMED ACCEPTANCE OF SUCH TERMS AND CONDITIONS AND WAIVER OF ANY OTHER PROVISIONS PROVIDED BY THE SUPPLIER,\n" +
+        "UNLESS OTHERWISE AGREED IN A WRITING SIGNED BY THE DULY APPOINTED REPRESENTATIVE OF OILINDUSTRYSUPPLIESSERVICESLIMITED Iraq Branch.",
+      15,
+      //@ts-ignore
+      doc.lastAutoTable.finalY + 10,
+      { maxWidth: 180 }
+    );
+
+    doc.text(
+      "Electronic Approved by _______________________",
+      15,
+      doc.internal.pageSize.height - 12
+    );
+
+    doc.save(`purchase-order-${values.prNumber}.pdf`);
+};
 
   const generateExcel = (values: z.infer<typeof formSchema>) => {
     const wb = XLSX.utils.book_new();

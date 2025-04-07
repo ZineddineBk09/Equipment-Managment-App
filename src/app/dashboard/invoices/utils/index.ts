@@ -8,7 +8,7 @@ export const generatePDF = async (values: any, poNumber: string) => {
   // Add report header with logo and company info
   doc.setFillColor(244, 244, 244);
   doc.rect(0, 0, doc.internal.pageSize.width, 40, "F");
-  doc.addImage("/logo-removebg.png", "PNG", 14, 10, 30, 20);
+  doc.addImage("/logo-report.png", "PNG", 14, 10, 30, 20);
   doc.setFontSize(20);
   doc.setTextColor(51, 51, 51);
   doc.text("Purchase Order", doc.internal.pageSize.width / 2, 25, {

@@ -32,7 +32,6 @@ export function NotificationsPanel() {
           const category = getTimeCategory(data.dueDate);
           if (!category) return null;
           if (data.status === "completed") return null;
-          console.log(data, category);
 
           return {
             id: doc.id,

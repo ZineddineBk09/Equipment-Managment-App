@@ -17,6 +17,7 @@ import { Chart, registerables } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { toPng } from "html-to-image";
 import { uploadReport } from "@/lib/reports";
+import { useUser } from "@/hooks/use-user";
 
 const getStatusColor = (status: string): number[] => {
   switch (status.toLowerCase()) {
@@ -49,7 +50,7 @@ const filterTasksStatusCount = (tasks: Task[], status: string) => {
 export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [chartData, setChartData] = useState<any>(null);
-
+  const { user } = useUser();
   const getEquipmentUsage = async (equipmentId: string) => {
     try {
       const usageQuery = query(
@@ -291,7 +292,7 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
         type: "equipment",
         equipmentId: equipment.serialNumber,
         equipmentName: equipment.name,
-        generatedBy: "admin",
+        generatedBy: user.email,
       });
 
       toast({

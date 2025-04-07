@@ -18,8 +18,10 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import withAuth from "@/lib/hocs/withAuth";
+import { FIREBASE_RESOURCES } from "@/enums/resources";
 
-export default function ProfilePage() {
+function ProfilePage() {
   const [user, loading] = useAuthState(auth);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -69,7 +71,7 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    router.push("/login");
+    router.push("/");
     return null;
   }
 
@@ -132,3 +134,11 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+export default withAuth(ProfilePage, {
+  requiredRole: "viewer",
+  requiredPermissions: [
+    FIREBASE_RESOURCES.USERS + ":view",
+    FIREBASE_RESOURCES.USERS + ":edit",
+  ],
+});

@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Globe, LogOut, User } from "lucide-react";
+import {
+  Bell,
+  ChevronLeft,
+  Globe,
+  LogOut,
+  PanelRightOpen,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,7 +24,7 @@ import { logout } from "@/lib/firebase";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/hooks/use-user";
 
-export function Navbar() {
+export function Navbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const isWelcomePage = pathname.includes("welcome");
@@ -30,6 +37,11 @@ export function Navbar() {
   return (
     <nav className="border-b bg-background">
       <div className="w-full justify-between ml-auto container flex h-16 items-center px-4">
+        {!isWelcomePage && (
+          <Button variant="ghost" size="icon" onClick={onToggleSidebar} className="mr-auto">
+            <PanelRightOpen className="h-7 w-7" />
+          </Button>
+        )}
         {isWelcomePage && (
           <Link
             href="/"
@@ -42,7 +54,6 @@ export function Navbar() {
         <div className="ml-auto flex items-center space-x-4">
           <Button variant="ghost" size="icon" onClick={() => {}}>
             <Globe className="h-7 w-7" />
-            <span className="sr-only">Toggle Language</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

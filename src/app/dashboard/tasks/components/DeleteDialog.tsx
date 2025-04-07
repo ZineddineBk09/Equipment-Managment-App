@@ -56,7 +56,7 @@ export function DeleteDialog({ task, onDelete }: DeleteDialogProps) {
           <Trash2 className="text-red-500 text-xl" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Delete Task</DialogTitle>
           <DialogDescription>

@@ -46,6 +46,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { EquipmentReportButton } from "./components/EquipmentReport";
 import { useSearchParams } from "next/navigation";
+import withAuth from "@/lib/hocs/withAuth";
+import { FIREBASE_RESOURCES, USER_ROLES } from "@/enums/resources";
 
 const statusBadge = (status: "active" | "maintenance" | "decommissioned") => {
   if (status.toLocaleLowerCase() === "active") {
@@ -69,7 +71,7 @@ const statusBadge = (status: "active" | "maintenance" | "decommissioned") => {
 
 const ITEMS_PER_PAGE = 10;
 
-export default function EquipmentPage() {
+function EquipmentPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -429,3 +431,11 @@ export default function EquipmentPage() {
     </div>
   );
 }
+
+export default withAuth(EquipmentPage, {
+  requiredRole: USER_ROLES.VIEWER,
+  requiredPermissions: [
+    FIREBASE_RESOURCES.EQUIPMENTS + ":view",
+    FIREBASE_RESOURCES.EQUIPMENTS + ":edit",
+  ],
+});

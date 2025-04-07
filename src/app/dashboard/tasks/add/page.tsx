@@ -30,6 +30,8 @@ import { useEffect, useState } from "react";
 import { FIREBASE_COLLECTIONS } from "@/enums/collections";
 import { Equipment } from "@/interfaces/equipment";
 import { Plus } from "lucide-react";
+import withAuth from "@/lib/hocs/withAuth";
+import { FIREBASE_RESOURCES, USER_ROLES } from "@/enums/resources";
 
 const formSchema = z.object({
   equipmentId: z.string().min(1, {
@@ -57,7 +59,7 @@ const formSchema = z.object({
   notes: z.string(),
 });
 
-export default function AddMaintenanceTaskPage() {
+function AddMaintenanceTaskPage() {
   const router = useRouter();
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -341,3 +343,8 @@ export default function AddMaintenanceTaskPage() {
     </div>
   );
 }
+
+export default withAuth(AddMaintenanceTaskPage, {
+  requiredRole: USER_ROLES.VIEWER,
+  requiredPermissions: [FIREBASE_RESOURCES.TASKS+":edit"],
+});

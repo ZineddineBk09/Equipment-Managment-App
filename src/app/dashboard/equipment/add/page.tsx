@@ -26,6 +26,8 @@ import { useState } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase"; // Import Firestore
 import { FIREBASE_COLLECTIONS } from "@/enums/collections";
+import withAuth from "@/lib/hocs/withAuth";
+import { FIREBASE_RESOURCES, USER_ROLES } from "@/enums/resources";
 
 // Updated Zod schema to include image link
 const formSchema = z.object({
@@ -51,7 +53,7 @@ const formSchema = z.object({
   }),
 });
 
-export default function AddEquipmentPage() {
+function AddEquipmentPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -300,3 +302,8 @@ export default function AddEquipmentPage() {
     </div>
   );
 }
+
+export default withAuth(AddEquipmentPage, {
+  requiredRole: USER_ROLES.VIEWER,
+  requiredPermissions: [FIREBASE_RESOURCES.EQUIPMENTS + ":edit"],
+});

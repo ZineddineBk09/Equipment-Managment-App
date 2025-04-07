@@ -19,6 +19,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSignUp } from "@/hooks/use-signup";
 import { FIREBASE_COLLECTIONS } from "@/enums/collections";
+import { trimFirebaseError } from "@/utils";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -34,8 +35,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      //   await signUp(email, password, "Admin");
-      //   return;
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email.trim(),
@@ -43,17 +42,22 @@ export default function LoginPage() {
       );
       const user = userCredential.user;
 
-      // Fetch user data (optional, for roles/permissions)
+      // Fetch user data
       const userDoc = await getDoc(doc(db, FIREBASE_COLLECTIONS.USERS, user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        if (userData.status !== "active") {
+          throw new Error("Your account is not active. Please contact the administrator.");
+        }
+      } else {
+        throw new Error("User data not found. Please contact the administrator.");
       }
 
       // Redirect to dashboard
       router.push("/welcome");
     } catch (error: any) {
       setError(
-        error.message || "Failed to log in. Please check your credentials."
+        trimFirebaseError(error.message) || "Failed to log in. Please check your credentials."
       );
       console.error(error);
     } finally {

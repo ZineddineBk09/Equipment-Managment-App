@@ -9,8 +9,10 @@ import { Overview } from "@/components/Overview";
 import { RecentMaintenanceTasks } from "@/components/RecentSales";
 import { AlertCircle, CheckCircle, ClipboardList, Wrench } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
+import withAuth from "@/lib/hocs/withAuth";
+import { FIREBASE_RESOURCES } from "@/enums/resources";
 
-export default function DashboardPage() {
+function DashboardPage() {
   const [totalEquipment, setTotalEquipment] = useState(0);
   const [activeTasks, setActiveTasks] = useState(0);
   const [completedTasks, setCompletedTasks] = useState(0);
@@ -151,3 +153,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+export default withAuth(DashboardPage, {
+  requiredRole: "viewer",
+  requiredPermissions: [FIREBASE_RESOURCES.DASHBOARD + ":view"],
+});

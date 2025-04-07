@@ -34,8 +34,10 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteDialog } from "./components/DeleteDialog";
 import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "./components/DateRangePicker";
+import withAuth from "@/lib/hocs/withAuth";
+import { FIREBASE_RESOURCES, USER_ROLES } from "@/enums/resources";
 
-export default function ReportsArchivePage() {
+function ReportsArchivePage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,7 +55,6 @@ export default function ReportsArchivePage() {
         .list("public/reports");
 
       if (error) throw error;
-      console.log("Files:", files);
       // Map files to our Report interface
       const mappedReports = files.map((file) => ({
         id: file.id,
@@ -289,3 +290,8 @@ export default function ReportsArchivePage() {
     </div>
   );
 }
+
+export default withAuth(ReportsArchivePage, {
+  requiredRole: USER_ROLES.VIEWER,
+  requiredPermissions: [FIREBASE_RESOURCES.REPORTS + ":view"],
+});

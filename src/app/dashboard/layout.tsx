@@ -15,6 +15,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -65,12 +66,11 @@ export default function RootLayout({
       <audio ref={audioRef} preload="auto">
         <source src="/sounds/notification.mp3" type="audio/mpeg" />
       </audio>
-      <Sidebar />
+      <Sidebar collapsed={collapsed} />
       <main className="flex-1 overflow-y-auto bg-background">
-        <Navbar />
+        <Navbar onToggleSidebar={() => setCollapsed(!collapsed)} />
         <main className="flex-1 overflow-y-auto px-2">
-
-        {children}
+          {children}
         </main>
       </main>
     </div>

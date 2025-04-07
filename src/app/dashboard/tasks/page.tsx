@@ -38,6 +38,8 @@ import { toast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSearchParams } from "next/navigation";
 import { EditDialog } from "./components/EditDialog";
+import withAuth from "@/lib/hocs/withAuth";
+import { FIREBASE_RESOURCES, USER_ROLES } from "@/enums/resources";
 
 const statusBadge = (status: "scheduled" | "completed") => {
   if (status.toLocaleLowerCase() === "completed") {
@@ -59,7 +61,7 @@ const statusBadge = (status: "scheduled" | "completed") => {
 
 const ITEMS_PER_PAGE = 10;
 
-export default function TasksPage() {
+function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -324,3 +326,8 @@ export default function TasksPage() {
     </div>
   );
 }
+
+export default withAuth(TasksPage, {
+  requiredRole: USER_ROLES.VIEWER,
+  requiredPermissions: [FIREBASE_RESOURCES.TASKS + ":view", "tasks:edit"],
+});

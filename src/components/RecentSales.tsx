@@ -45,7 +45,6 @@ export function RecentMaintenanceTasks() {
           id: doc.id,
           ...doc.data(),
         })) as Task[];
-        console.log("maintenance tasks:", fetchedTasks);
 
         setTasks(fetchedTasks);
 
@@ -106,9 +105,7 @@ export function RecentMaintenanceTasks() {
 
             {/* Completion Date */}
             <div className="ml-auto font-medium text-gray-500">
-              {
-                dayjs(task.createdAt as string).format("MMM D, YYYY h:mm A")
-              }
+              {dayjs(task.createdAt as string).format("MMM D, YYYY h:mm A")}
             </div>
           </div>
         );

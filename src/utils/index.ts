@@ -111,3 +111,19 @@ export const getTimeCategory = (dateStr: string) => {
   if (diffDays <= 7) return "1week";
   return null;
 };
+
+export const trimFirebaseError = (error: string) => {
+  // handle different firebase errors: auth/invalid-credential, auth/user-not-found, etc.
+  if (error.includes("auth/internal-error")) {
+    return "Internal error occurred. Please try again later.";
+  } else if (error.includes("auth/invalid-credential")) {
+    return "Invalid credentials. Please try again.";
+  } else if (error.includes("auth/user-not-found")) {
+    return "User not found. Please try again.";
+  }
+  return error.replace("Firebase: ", "");
+};
+
+export const formatFirebaseTime = (time: FirebaseTimeStamp) => {
+  return new Date(time.seconds * 1000 + time.nanoseconds / 1000000);
+};

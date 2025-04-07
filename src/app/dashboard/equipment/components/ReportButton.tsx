@@ -26,6 +26,7 @@ import { format } from "date-fns";
 import { Task } from "@/interfaces/task";
 import { uploadReport } from "@/lib/reports";
 import { getUnitByAssetType } from "./EquipmentReport";
+import { useUser } from "@/hooks/use-user";
 
 export const getStatusColor = (status: string): number[] => {
   switch (status.toLowerCase()) {
@@ -42,7 +43,7 @@ export const getStatusColor = (status: string): number[] => {
 
 export function ReportButton({ equipment }: { equipment: Equipment[] }) {
   const [isGenerating, setIsGenerating] = useState(false);
-
+  const { user } = useUser();
   /**
    * Fetches and calculates the total active hours for a given equipment
    * by summing up `hoursWorked` from the `usage` array in Firestore.
@@ -314,7 +315,7 @@ export function ReportButton({ equipment }: { equipment: Equipment[] }) {
       const pdfBlob = doc.output("blob");
       await uploadReport(pdfBlob, {
         type: "general",
-        generatedBy: "admin",
+        generatedBy: user.email,
       });
 
       toast({

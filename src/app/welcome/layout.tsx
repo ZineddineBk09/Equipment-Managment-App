@@ -18,7 +18,7 @@ export default function RootLayout({
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        router.push("/"); // Redirect to login if not authenticated
+        // router.push("/"); // Redirect to login if not authenticated
       } else {
         setUser(user);
       }

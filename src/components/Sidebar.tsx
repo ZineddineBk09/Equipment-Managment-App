@@ -13,6 +13,7 @@ import {
   File,
   FileCheck,
   PackageSearch,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -82,9 +83,15 @@ const invoicesDashboard = [
     icon: PackageSearch,
     permissions: [FIREBASE_RESOURCES.INVOICES + ":view"],
   },
+  {
+    name: "Messages",
+    href: "/dashboard/invoices/messages",
+    icon: Send,
+    permissions: [FIREBASE_RESOURCES.INVOICES + ":view"],
+  },
 ];
 
-export function Sidebar({ collapsed }: { collapsed: boolean }) {
+export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
   const { user, loading } = useUser();
   const [navItems, setNavItems] = useState<
@@ -183,7 +190,9 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
           alt=""
           className={cn("h-12 w-12", collapsed && "h-8 w-8")}
         />
-        {!collapsed && <h1 className="text-lg font-bold truncate">ResenixPro</h1>}
+        {!collapsed && (
+          <h1 className="text-lg font-bold truncate">ResenixPro</h1>
+        )}
       </Link>
       <nav className="flex-1 space-y-1 px-2 py-4">
         {navItems.map((item) => {

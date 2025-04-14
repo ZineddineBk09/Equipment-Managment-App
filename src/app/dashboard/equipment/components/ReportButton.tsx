@@ -116,7 +116,8 @@ export function ReportButton({ equipment }: { equipment: Equipment[] }) {
       doc.rect(0, 0, doc.internal.pageSize.width, 40, "F");
 
       // Company logo (assuming you have a logo.png in public folder)
-      doc.addImage("/logo-report.png", "PNG", 14, 10, 30, 20);
+      // doc.addImage("/logo-report.png", "PNG", 14, 10, 30, 20);
+      doc.addImage("/logo-removebg.png", "PNG", 15, 10, 30, 30);
 
       // Report title and date
       doc.setFontSize(20);

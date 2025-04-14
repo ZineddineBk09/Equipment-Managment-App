@@ -70,6 +70,7 @@ import { db } from "@/lib/firebase";
 import { fetchVendors } from "@/lib/firebase";
 import withAuth from "@/lib/hocs/withAuth";
 import { USER_ROLES, FIREBASE_RESOURCES } from "@/enums/resources";
+import { useCountries } from "@/hooks/useCountries";
 
 // Form schema
 const formSchema = z.object({
@@ -80,6 +81,11 @@ const formSchema = z.object({
   shippingAddress: z
     .string()
     .min(1, { message: "Shipping address is required" }),
+  originCountry: z.string().min(1, { message: "Origin country is required" }),
+  destinationCountry: z
+    .string()
+    .min(1, { message: "Destination country is required" }),
+  shippingMethod: z.string().optional(),
   items: z
     .array(
       z.object({
@@ -107,6 +113,7 @@ function POGenerationPage() {
   const [termsDialogOpen, setTermsDialogOpen] = useState(false);
   const [prList, setPrList] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
+  const countries = useCountries();
 
   useEffect(() => {
     const fetchPRs = async () => {
@@ -146,8 +153,11 @@ function POGenerationPage() {
       deliveryDate: format(
         new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         "yyyy-MM-dd"
-      ), // 2 weeks from now
+      ),
       shippingAddress: "",
+      originCountry: "",
+      destinationCountry: "IQ", // Default to Iraq
+      shippingMethod: "",
       items: [],
       subtotal: "0.00",
       taxRate: "7.5",
@@ -220,10 +230,56 @@ function POGenerationPage() {
     form.setValue("total", total);
   };
 
+  const calculateShippingCost = () => {
+    const origin = form.getValues("originCountry");
+    const destination = form.getValues("destinationCountry");
+    const method = form.getValues("shippingMethod");
+
+    // Simple shipping cost calculation based on distance and method
+    let cost = 0;
+
+    if (origin && destination) {
+      // Base cost
+      if (method === "air") {
+        cost = 500; // Base air freight cost
+      } else if (method === "sea") {
+        cost = 300; // Base sea freight cost
+      } else if (method === "land") {
+        cost = 200; // Base land transport cost
+      } else {
+        cost = 100; // Default cost
+      }
+
+      // Add distance factor (simplified)
+      if (origin !== destination) {
+        cost *= 1.5; // Increase cost for international shipping
+      }
+    }
+
+    form.setValue("shippingCost", cost.toFixed(2));
+    calculateTotals();
+  };
+
+  // Then call this function when countries or shipping method changes
+  useEffect(() => {
+    calculateShippingCost();
+  }, [
+    form.watch("originCountry"),
+    form.watch("destinationCountry"),
+    form.watch("shippingMethod"),
+  ]);
+
   const generatePDF = async (values: z.infer<typeof formSchema>) => {
     const doc = new jsPDF();
     const currentDate = format(new Date(), "yyyy-MM-dd");
     const selectedVendor = vendors.find((v) => v.id === values.vendor);
+    // Get country names from codes
+    const originCountry =
+      countries.find((c) => c.alpha3Code === values.originCountry)?.name ||
+      values.originCountry;
+    const destinationCountry =
+      countries.find((c) => c.alpha3Code === values.destinationCountry)?.name ||
+      values.destinationCountry;
 
     // ===== Document Setup =====
     doc.setProperties({
@@ -233,32 +289,48 @@ function POGenerationPage() {
 
     // ===== Generate QR Code =====
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${poNumber}`;
-    
+
     // ===== Header Section =====
     // Company Logo (Left Side)
-    doc.addImage("/logo-report.png", "PNG", 15, 5, 30, 15);
+    doc.addImage("/logo-removebg.png", "PNG", 15, 4, 30, 30);
 
     // QR Code (Right Side)
-    doc.addImage(qrCodeUrl, "PNG", doc.internal.pageSize.width - 40, 5, 30, 30);
+    doc.addImage(qrCodeUrl, "PNG", doc.internal.pageSize.width - 40, 5, 20, 20);
+    // place the QR code in the center bottom of the page
 
     // Company details (Centered below logo and QR)
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
-    doc.text("OILINDUSTRYSUPPLIESSERVICESLIMITED", doc.internal.pageSize.width / 2, 25, {
-      align: "center"
-    });
-    doc.text("Aljizzer Street, Basra, 61002, Iraq", doc.internal.pageSize.width / 2, 30, {
-      align: "center"
-    });
-    doc.text("admin@oilindustrysupplieserviceslimited.com | +9647801552390", doc.internal.pageSize.width / 2, 35, {
-      align: "center"
-    });
+    doc.text(
+      "OILINDUSTRYSUPPLIESSERVICESLIMITED",
+      doc.internal.pageSize.width / 2,
+      15,
+      {
+        align: "center",
+      }
+    );
+    doc.text(
+      "Aljizzer Street, Basra, 61002, Iraq",
+      doc.internal.pageSize.width / 2,
+      20,
+      {
+        align: "center",
+      }
+    );
+    doc.text(
+      "admin@oilindustrysupplieserviceslimited.com | +9647801552390",
+      doc.internal.pageSize.width / 2,
+      25,
+      {
+        align: "center",
+      }
+    );
 
     // Document Title (Below company info)
     doc.setFontSize(12);
     //@ts-ignore
     doc.setFont(undefined, "bold");
-    doc.text("PURCHASE ORDER", doc.internal.pageSize.width / 2, 45, {
+    doc.text("PURCHASE ORDER", doc.internal.pageSize.width / 2, 35, {
       align: "center",
     });
 
@@ -266,18 +338,18 @@ function POGenerationPage() {
     doc.setFontSize(8);
     //@ts-ignore
     doc.setFont(undefined, "normal");
-    doc.text(`PO Number: #${poNumber}`, 15, 55);
-    doc.text(`Date: ${currentDate}`, doc.internal.pageSize.width - 15, 55, {
-      align: "right"
+    doc.text(`PO Number: #${poNumber}`, 15, 45);
+    doc.text(`Date: ${currentDate}`, doc.internal.pageSize.width - 15, 45, {
+      align: "right",
     });
 
     // Horizontal line separator
     doc.setDrawColor(200, 200, 200);
-    doc.line(15, 60, doc.internal.pageSize.width - 15, 60);
+    doc.line(15, 50, doc.internal.pageSize.width - 15, 50);
 
     // ===== Vendor & Ship To Sections =====
     autoTable(doc, {
-      startY: 65,
+      startY: 55,
       body: [
         [
           { content: "VENDOR:", styles: { fontStyle: "bold", fontSize: 8 } },
@@ -295,10 +367,11 @@ function POGenerationPage() {
             styles: { fontStyle: "bold", fontSize: 8 },
           },
           {
-            content: "Shipping terms\nShipping cost to Umm Qasr Port Iraq",
+            content: `Shipping terms\nShipping from ${originCountry} to ${destinationCountry}`,
             styles: { fontStyle: "bold", fontSize: 8 },
           },
         ],
+        [values.deliveryDate, values.shippingMethod || "Not specified"],
         [values.deliveryDate, ""],
       ],
       theme: "plain",
@@ -471,14 +544,17 @@ function POGenerationPage() {
           },
         ],
         [
-          "Transportation in China",
+          `Transportation in ${originCountry}`,
           {
             content: "USD 0.00",
             styles: { halign: "right", fontSize: 8 },
           },
         ],
         [
-          "Shipping to Iraq",
+          `Shipping to ${
+            countries.find((c) => c.alpha3Code === values.destinationCountry)
+              ?.name
+          }`,
           {
             content: `USD ${parseFloat(values.shippingCost).toFixed(2)}`,
             styles: { halign: "right", fontSize: 8 },
@@ -526,16 +602,26 @@ function POGenerationPage() {
     );
 
     doc.save(`purchase-order-${values.prNumber}.pdf`);
-};
+  };
 
   const generateExcel = (values: z.infer<typeof formSchema>) => {
     const wb = XLSX.utils.book_new();
+    const originCountry =
+      countries.find((c) => c.alpha3Code === values.originCountry)?.name ||
+      values.originCountry;
+    const destinationCountry =
+      countries.find((c) => c.alpha3Code === values.destinationCountry)?.name ||
+      values.destinationCountry;
+
     const wsData = [
       ["PO Number", poNumber],
       ["Date", currentDate],
       ["Vendor", vendors.find((v) => v.id === values.vendor)?.name],
       ["Payment Terms", values.paymentTerms],
       ["Delivery Date", values.deliveryDate],
+      ["Origin Country", originCountry],
+      ["Destination Country", destinationCountry],
+      ["Shipping Method", values.shippingMethod],
       [],
       [
         "Material",
@@ -560,6 +646,7 @@ function POGenerationPage() {
       ["Shipping Cost", values.shippingCost],
       ["Total", values.total],
     ];
+
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, "Purchase Order");
     XLSX.writeFile(wb, `purchase-order-${poNumber}.xlsx`);
@@ -738,6 +825,111 @@ function POGenerationPage() {
                               placeholder="Enter shipping address"
                             />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="originCountry"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Origin Country</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select origin country" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {countries.map((country) => (
+                                <SelectItem
+                                  key={country.alpha3Code}
+                                  value={country.alpha3Code}
+                                >
+                                  <div className="flex items-center gap-x-2">
+                                    <img
+                                      src={country.flag}
+                                      alt=""
+                                      className="w-6 h-4 mr-2"
+                                    />
+                                    <span>{country.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="destinationCountry"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Destination Country</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select destination country" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {countries.map((country) => (
+                                <SelectItem
+                                  key={country.alpha3Code}
+                                  value={country.alpha3Code}
+                                >
+                                  <div className="flex items-center gap-x-2">
+                                    <img
+                                      src={country.flag}
+                                      alt=""
+                                      className="w-6 h-4 mr-2"
+                                    />
+                                    <span>{country.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="shippingMethod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Shipping Method</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select shipping method" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="air">Air Freight</SelectItem>
+                              <SelectItem value="sea">Sea Freight</SelectItem>
+                              <SelectItem value="land">
+                                Land Transport
+                              </SelectItem>
+                              <SelectItem value="courier">Courier</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -921,6 +1113,39 @@ function POGenerationPage() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
+                            <Label>Shipping Route</Label>
+                            <div className="text-sm text-muted-foreground">
+                              {form.watch("originCountry") &&
+                              form.watch("destinationCountry") ? (
+                                <>
+                                  {
+                                    countries.find(
+                                      (c) =>
+                                        c.alpha3Code ===
+                                        form.watch("originCountry")
+                                    )?.name
+                                  }{" "}
+                                  →
+                                  {
+                                    countries.find(
+                                      (c) =>
+                                        c.alpha3Code ===
+                                        form.watch("destinationCountry")
+                                    )?.name
+                                  }
+                                  {form.watch("shippingMethod") && (
+                                    <span className="block text-xs">
+                                      Method: {form.watch("shippingMethod")}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                "Not specified"
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
                             <Label>Shipping Cost</Label>
                             <FormField
                               control={form.control}
@@ -928,13 +1153,23 @@ function POGenerationPage() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormControl>
-                                    <Input
-                                      {...field}
-                                      onChange={(e) => {
-                                        field.onChange(e);
-                                        calculateTotals();
-                                      }}
-                                    />
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        {...field}
+                                        onChange={(e) => {
+                                          field.onChange(e);
+                                          calculateTotals();
+                                        }}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={calculateShippingCost}
+                                      >
+                                        Recalculate
+                                      </Button>
+                                    </div>
                                   </FormControl>
                                 </FormItem>
                               )}

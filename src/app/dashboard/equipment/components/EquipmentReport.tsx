@@ -129,7 +129,8 @@ export function EquipmentReportButton({ equipment }: { equipment: Equipment }) {
       // Header section with logo and company info
       doc.setFillColor(244, 244, 244);
       doc.rect(0, 0, doc.internal.pageSize.width, 30, "F");
-      doc.addImage("/logo-report.png", "PNG", 14, 5, 30, 20);
+      // doc.addImage("/logo-report.png", "PNG", 14, 5, 30, 20);
+      doc.addImage("/logo-removebg.png", "PNG", 15, 4, 30, 30);
 
       // Report title and metadata
       doc.setFontSize(16);

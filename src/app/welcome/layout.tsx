@@ -13,7 +13,12 @@ export default function RootLayout({
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [collapseSidebar, setCollapseSidebar] = useState(false);
   const router = useRouter();
+
+  const toggleSidebar = () => {
+    setCollapseSidebar((prev) => !prev);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -38,9 +43,9 @@ export default function RootLayout({
 
   return (
     <div className="w-full flex h-screen">
-      {!pathname.includes("welcome") && <Sidebar />}
+      {!pathname.includes("welcome") && <Sidebar collapsed={collapseSidebar} />}
       <main className="w-full flex-1 overflow-y-auto bg-background">
-        <Navbar />
+        <Navbar onToggleSidebar={toggleSidebar} />
         {children}
       </main>
     </div>

@@ -4,9 +4,17 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { getFirestore, collection, getDocs, addDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Trash } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -34,6 +42,16 @@ import {
 import { db, fetchVendors } from "@/lib/firebase";
 import withAuth from "@/lib/hocs/withAuth";
 import { USER_ROLES, FIREBASE_RESOURCES } from "@/enums/resources";
+import { FIREBASE_COLLECTIONS } from "@/enums/collections";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Vendor name is required" }),
@@ -41,9 +59,11 @@ const formSchema = z.object({
   terms: z.string().min(1, { message: "Payment terms are required" }),
 });
 
-
 function VendorsPage() {
   const [vendors, setVendors] = useState<any[]>([]);
+  const [selectedVendor, setSelectedVendor] = useState<any | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,15 +83,40 @@ function VendorsPage() {
   }, []);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    await addDoc(collection(db, "vendors"), values);
+    await addDoc(collection(db, FIREBASE_COLLECTIONS.VENDORS), values);
     form.reset();
-    const vendorCollection = collection(db, "vendors");
+    const vendorCollection = collection(db, FIREBASE_COLLECTIONS.VENDORS);
     const vendorSnapshot = await getDocs(vendorCollection);
     const vendorData = vendorSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
     setVendors(vendorData);
+  };
+
+  const onDeleteVendor = async () => {
+    if (!selectedVendor) return;
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, FIREBASE_COLLECTIONS.VENDORS, selectedVendor.id));
+      setVendors((prevVendors) =>
+        prevVendors.filter((vendor) => vendor.id !== selectedVendor.id)
+      );
+      toast({
+        title: "Vendor deleted",
+        description: "The vendor has been successfully deleted.",
+      });
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error deleting vendor:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete vendor. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -144,6 +189,7 @@ function VendorsPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead>Payment Terms</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -152,6 +198,46 @@ function VendorsPage() {
                   <TableCell>{vendor.name}</TableCell>
                   <TableCell>{vendor.address}</TableCell>
                   <TableCell>{vendor.terms}</TableCell>
+                  <TableCell>
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedVendor(vendor);
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Trash className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px] max-h-[95vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Delete Vendor</DialogTitle>
+                          <DialogDescription>
+                            Are you sure you want to delete this vendor? This
+                            action cannot be undone.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={onDeleteVendor}
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? "Deleting..." : "Delete"}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -164,5 +250,8 @@ function VendorsPage() {
 
 export default withAuth(VendorsPage, {
   requiredRole: USER_ROLES.VIEWER,
-  requiredPermissions: [FIREBASE_RESOURCES.INVOICES + ":view", FIREBASE_RESOURCES.INVOICES + ":edit"],
+  requiredPermissions: [
+    FIREBASE_RESOURCES.INVOICES + ":view",
+    FIREBASE_RESOURCES.INVOICES + ":edit",
+  ],
 });

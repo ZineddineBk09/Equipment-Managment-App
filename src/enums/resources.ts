@@ -5,6 +5,7 @@ export const FIREBASE_RESOURCES = {
   REPORTS: "reports",
   DASHBOARD: "dashboard",
   INVOICES: "invoices",
+  ORDERS: "orders",
 };
 
 export const USER_ROLES = {

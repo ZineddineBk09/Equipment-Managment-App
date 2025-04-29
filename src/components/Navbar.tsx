@@ -47,7 +47,7 @@ export function Navbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
             href="/"
             className="absolute top-2 left-4 flex items-center space-x-2"
           >
-            <img src="/logo-removebg.png" alt="" className="h-12 w-12" />
+            <img src="/logo-removebg-new.png" alt="" className="h-12 w-12" />
             <h1 className="text-lg font-bold truncate">ResenixPro</h1>
           </Link>
         )}

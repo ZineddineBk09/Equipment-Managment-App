@@ -6,15 +6,11 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Archive,
+  Trash,
   Eye,
-  Filter,
-  Search,
   ChevronDown,
   ChevronUp,
   Loader2,
-  Trash,
-  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,22 +39,24 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { usePRUpdates, useUpdatePRStatus } from "@/hooks/useFirestore";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useOrderUpdates, useUpdateOrderStatus } from "@/hooks/useFirestore";
 import { formatFirebaseTime } from "@/utils";
-import { deleteDoc, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { deleteDoc, doc } from "firebase/firestore";
+import { db, fetchOneVendor } from "@/lib/firebase";
 import withAuth from "@/lib/hocs/withAuth";
 import { USER_ROLES, FIREBASE_RESOURCES } from "@/enums/resources";
+import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useCountries } from "@/hooks/useCountries";
 
-function PRApprovalDashboard() {
-  const { data: prs, loading } = usePRUpdates();
-  const { updateStatus, loading: updatingStatus } = useUpdatePRStatus();
-  const [selectedPR, setSelectedPR] = useState<any>(null);
+function OrderApprovalDashboard() {
+  const { data: orders, loading } = useOrderUpdates();
+  console.log(orders);
+  const { updateStatus, loading: updatingStatus } = useUpdateOrderStatus();
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(
@@ -74,21 +72,25 @@ function PRApprovalDashboard() {
     direction: "asc" | "desc";
   } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [prToDelete, setPrToDelete] = useState<string | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const countries = useCountries();
 
-  // Filter PRs based on active tab and search term
-  const filteredPRs = prs.filter((pr) => {
-    const matchesTab = activeTab === "all" || pr.status === activeTab;
+  // Filter orders based on active tab and search term
+  const filteredOrders = orders.filter((order) => {
+    const matchesTab = activeTab === "all" || order.status === activeTab;
     const matchesSearch =
-      pr.prNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pr.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pr.department.toLowerCase().includes(searchTerm.toLowerCase());
+      order?.poNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order?.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(order?.vendorName)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
 
     return matchesTab && matchesSearch;
   });
 
-  // Sort PRs based on sort config
-  const sortedPRs = [...filteredPRs].sort((a, b) => {
+  // Sort orders based on sort config
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
     if (!sortConfig) return 0;
 
     const { key, direction } = sortConfig;
@@ -118,37 +120,29 @@ function PRApprovalDashboard() {
     setSortConfig({ key, direction });
   };
 
-  const openDetailView = (pr: any) => {
-    setSelectedPR(pr);
+  const openDetailView = (order: any) => {
+    setSelectedOrder(order);
     setIsDetailOpen(true);
   };
 
-  const openActionDialog = (pr: any, action: "approve" | "reject") => {
-    setSelectedPR(pr);
+  const openActionDialog = (order: any, action: "approve" | "reject") => {
+    setSelectedOrder(order);
     setActionType(action);
     setActionComment("");
     setIsActionDialogOpen(true);
   };
 
   const handleAction = async () => {
-    if (!selectedPR || !actionType) return;
+    if (!selectedOrder || !actionType) return;
     setIsProcessing(true);
     try {
       await updateStatus(
-        selectedPR.id,
+        selectedOrder.id,
         actionType === "approve" ? "approved" : "rejected"
       );
 
-      // Add rejection reason to document if rejcted
-      if (actionType === "reject") {
-        await updateDoc(doc(db, "materials", selectedPR.id), {
-          status: "rejected",
-          rejectionReason: actionComment,
-        });
-      }
-
       setActionSuccess(
-        `Purchase requisition ${selectedPR.prNumber} has been ${
+        `Order ${selectedOrder.poNumber} has been ${
           actionType === "approve" ? "approved" : "rejected"
         }.`
       );
@@ -189,29 +183,40 @@ function PRApprovalDashboard() {
   };
 
   const openDeleteDialog = (id: string) => {
-    setPrToDelete(id);
+    setOrderToDelete(id);
     setIsDeleteDialogOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!prToDelete) return;
-    await deleteDoc(doc(db, "materials", prToDelete));
+    if (!orderToDelete) return;
+    await deleteDoc(doc(db, "orders", orderToDelete));
     setIsDeleteDialogOpen(false);
-    setPrToDelete(null);
+    setOrderToDelete(null);
   };
 
-  const generatePRPDF = (pr: any) => {
+  const generatePDF = async (values: any) => {
+    console.log(values);
     const doc = new jsPDF();
     const currentDate = format(new Date(), "yyyy-MM-dd");
+    // fetch vendor in vendor collection
+    const selectedVendorId = values.vendor;
+    const selectedVendor: any = await fetchOneVendor(selectedVendorId);
+    // Get country names from codes
+    const originCountry =
+      countries.find((c) => c.alpha3Code === values.originCountry)?.name ||
+      values.originCountry;
+    const destinationCountry =
+      countries.find((c) => c.alpha3Code === values.destinationCountry)?.name ||
+      values.destinationCountry;
 
     // ===== Document Setup =====
     doc.setProperties({
-      title: `Purchase Requisition ${pr.prNumber}`,
+      title: `Purchase Order ${values.poNumber}`,
     });
     doc.setFont("helvetica", "normal");
 
     // ===== Generate QR Code =====
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${pr.prNumber}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${values.poNumber}`;
 
     // ===== Header Section =====
     // Company Logo (Left Side)
@@ -219,6 +224,7 @@ function PRApprovalDashboard() {
 
     // QR Code (Right Side)
     doc.addImage(qrCodeUrl, "PNG", doc.internal.pageSize.width - 40, 9, 20, 20);
+    // place the QR code in the center bottom of the page
 
     // Company details (Centered below logo and QR)
     doc.setFontSize(8);
@@ -227,34 +233,40 @@ function PRApprovalDashboard() {
       "OILINDUSTRYSUPPLIESSERVICESLIMITED",
       doc.internal.pageSize.width / 2,
       15,
-      { align: "center" }
+      {
+        align: "center",
+      }
     );
     doc.text(
       "Aljizzer Street, Basra, 61002, Iraq",
       doc.internal.pageSize.width / 2,
       20,
-      { align: "center" }
+      {
+        align: "center",
+      }
     );
     doc.text(
       "admin@oilindustrysuppliesandserviceslimited.com | +9647801552390",
       doc.internal.pageSize.width / 2,
       25,
-      { align: "center" }
+      {
+        align: "center",
+      }
     );
 
     // Document Title (Below company info)
     doc.setFontSize(12);
     //@ts-ignore
     doc.setFont(undefined, "bold");
-    doc.text("PURCHASE REQUISITION", doc.internal.pageSize.width / 2, 35, {
+    doc.text("PURCHASE ORDER", doc.internal.pageSize.width / 2, 35, {
       align: "center",
     });
 
-    // PR Number and Date (Below title)
+    // PO Number and Date (Below title)
     doc.setFontSize(8);
     //@ts-ignore
     doc.setFont(undefined, "normal");
-    doc.text(`PR Number: #${pr.prNumber}`, 15, 45);
+    doc.text(`PO Number: #${values.poNumber}`, 15, 45);
     doc.text(`Date: ${currentDate}`, doc.internal.pageSize.width - 15, 45, {
       align: "right",
     });
@@ -263,26 +275,32 @@ function PRApprovalDashboard() {
     doc.setDrawColor(200, 200, 200);
     doc.line(15, 50, doc.internal.pageSize.width - 15, 50);
 
-    // ===== PR Details Section =====
+    // ===== Vendor & Ship To Sections =====
     autoTable(doc, {
       startY: 55,
       body: [
         [
-          { content: "Requester", styles: { fontStyle: "bold", fontSize: 8 } },
-          pr.requester,
+          { content: "VENDOR:", styles: { fontStyle: "bold", fontSize: 8 } },
+          { content: "SHIP TO:", styles: { fontStyle: "bold", fontSize: 8 } },
         ],
         [
-          { content: "Department", styles: { fontStyle: "bold", fontSize: 8 } },
-          pr.department,
+          selectedVendor
+            ? `${selectedVendor.name}\n${selectedVendor.address}\n${selectedVendor.city}, ${selectedVendor.country}\n${selectedVendor.email}\n${selectedVendor.phone}`
+            : "Vendor not selected",
+          "OILINDUSTRYSUPPLIESSERVICESLIMITED\nAljizzer Street\nBasra, Basra, 61002\nIraq\nadmin@oilindustrysuppliesandserviceslimited.com\n+9647801552390",
         ],
         [
-          { content: "Location", styles: { fontStyle: "bold", fontSize: 8 } },
-          pr.location,
+          {
+            content: `Delivery date\nShipping method\nFreight Forwarding`,
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          {
+            content: `Shipping terms\nShipping from ${originCountry} to ${destinationCountry}`,
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
         ],
-        [
-          { content: "Status", styles: { fontStyle: "bold", fontSize: 8 } },
-          pr.status,
-        ],
+        [values.deliveryDate, values.shippingMethod || "Not specified"],
+        [values.deliveryDate, ""],
       ],
       theme: "plain",
       styles: {
@@ -292,65 +310,321 @@ function PRApprovalDashboard() {
         cellPadding: 1.5,
       },
       columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: 140 },
+        0: { cellWidth: 90 },
+        1: { cellWidth: 90 },
       },
     });
 
-    // ===== Justification Section =====
+    // ===== Items Table =====
     doc.setFontSize(10);
     //@ts-ignore
-    doc.text("Justification:", 15, doc.lastAutoTable.finalY + 10);
-    doc.setFontSize(9);
-    //@ts-ignore
-    doc.text(pr.justification || "N/A", 15, doc.lastAutoTable.finalY + 15, {
-      maxWidth: 180,
-    });
+    doc.text("ITEMS", 15, doc.lastAutoTable.finalY + 5);
 
-    // ===== Items Table =====
     autoTable(doc, {
       //@ts-ignore
-      startY: doc.lastAutoTable.finalY + 25,
-      head: [["Material", "Description", "Quantity", "Unit"]],
-      body: pr.items.map((item: any) => [
+      startY: doc.lastAutoTable.finalY + 8,
+      head: [
+        ["Item", "Description", "Quantity", "Unit", "Unit Cost", "Line Total"],
+      ],
+      body: values.items.map((item: any) => [
         item.material,
         item.description,
         item.qty,
         item.unit,
+        `USD ${parseFloat(item.unitCost).toFixed(2)}`,
+        `USD ${parseFloat(item.lineTotal).toFixed(2)}`,
       ]),
       theme: "grid",
       styles: {
-        fontSize: 9,
+        fontSize: 8,
         cellPadding: 2,
       },
       headStyles: {
         fillColor: [51, 51, 51],
         textColor: 255,
         fontStyle: "bold",
+        fontSize: 8,
+      },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 20 },
+        4: { halign: "right", cellWidth: 30 },
+        5: { halign: "right", cellWidth: 30 },
       },
     });
 
-    // ===== Footer Section =====
-    doc.setFontSize(8);
+    // ===== Document Requirements & Payment Terms Section =====
+    doc.setFontSize(10);
     doc.text(
-      "This document is auto-generated and is valid only for approved requisitions.",
+      "DOCUMENT REQUIRED (Foreign Supplier Only)",
       15,
-      doc.internal.pageSize.height - 10
+      //@ts-ignore
+      doc.lastAutoTable.finalY + 5
     );
 
-    // Save the PDF
-    doc.save(`purchase-requisition-${pr.prNumber}.pdf`);
+    autoTable(doc, {
+      //@ts-ignore
+      startY: doc.lastAutoTable.finalY + 8,
+      body: [
+        [
+          {
+            content: "DOCUMENT REQUIREMENTS",
+            styles: {
+              fontStyle: "bold",
+              textColor: [255, 255, 255],
+              fillColor: [51, 51, 51],
+              fontSize: 8,
+            },
+            colSpan: 1,
+          },
+          {
+            content: "FROM SUPPLIER",
+            styles: {
+              fontStyle: "bold",
+              textColor: [255, 255, 255],
+              fillColor: [51, 51, 51],
+              fontSize: 8,
+            },
+            colSpan: 1,
+          },
+          {
+            content: "FROM FORWARDER",
+            styles: {
+              fontStyle: "bold",
+              textColor: [255, 255, 255],
+              fillColor: [51, 51, 51],
+              fontSize: 8,
+            },
+            colSpan: 1,
+          },
+          {
+            content: "PAYMENT TERMS",
+            styles: {
+              fontStyle: "bold",
+              textColor: [255, 255, 255],
+              fillColor: [51, 51, 51],
+              fontSize: 8,
+            },
+            colSpan: 1,
+          },
+        ],
+        //@ts-ignore
+        // ...requiredDocs.map((doc) => [
+        //   doc.item,
+        //   { content: "[YES]", styles: { fontStyle: "bold", fontSize: 8 } },
+        //   { content: "[yes]", styles: { fontStyle: "bold", fontSize: 8 } },
+        //   doc.item === "Original Invoice & C.O.O"
+        //     ? {
+        //         content: selectedVendor.paymentTerms,
+        //         styles: { fontStyle: "normal", fontSize: 8 },
+        //         rowSpan: requiredDocs.length,
+        //       }
+        //     : null,
+        // ]),
+        // replace hardcoded values with dynamic ones using documents state var
+        ...values.requiredDocuments.map((doc, index) => [
+          doc.name,
+          {
+            content: doc.requiredFromSupplier ? "[YES]" : "[NO]",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          {
+            content: doc.requiredFromForwarder ? "[YES]" : "[NO]",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          index === 0
+            ? {
+                content: selectedVendor.terms,
+                styles: { fontStyle: "normal", fontSize: 8 },
+                rowSpan: values.requiredDocuments.length,
+              }
+            : null,
+        ]),
+      ],
+      theme: "grid",
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+      },
+      headStyles: {
+        fillColor: [51, 51, 51],
+        textColor: 255,
+        fontStyle: "bold",
+        fontSize: 8,
+      },
+      columnStyles: {
+        0: { cellWidth: 65 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 65 },
+      },
+    });
+
+    // ===== Doccuments Requirements =====
+    // autoTable(doc, {
+    //   //@ts-ignore
+    //   startY: doc.lastAutoTable.finalY + 8,
+    //   head: [
+    //     ["Document Name", "Required from Supplier", "Required from Forwarder"],
+    //   ],
+    //   body: documents.map((doc) => [
+    //     doc.name,
+    //     doc.requiredFromSupplier ? "YES" : "NO",
+    //     doc.requiredFromForwarder ? "YES" : "NO",
+    //   ]),
+    //   theme: "grid",
+    //   styles: {
+    //     fontSize: 8,
+    //     cellPadding: 2,
+    //   },
+    //   headStyles: {
+    //     fillColor: [51, 51, 51],
+    //     textColor: 255,
+    //     fontStyle: "bold",
+    //     fontSize: 8,
+    //   },
+    //   columnStyles: {
+    //     0: { cellWidth: 110 },
+    //     1: { cellWidth: 70 },
+    //     2: { cellWidth: 70 },
+    //   },
+    // });
+    autoTable(doc, {
+      //@ts-ignore
+      startY: doc.lastAutoTable.finalY + 8,
+      body: [
+        [
+          {
+            content: "PQ Gross Value",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          {
+            content: `USD ${parseFloat(values.subtotal).toFixed(2)}`,
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          "Discount",
+          {
+            content: "USD 0.00",
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          "PQ Net Value",
+          {
+            content: `USD ${parseFloat(values.subtotal).toFixed(2)}`,
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          `Total VAT (${values.taxRate}%)`,
+          {
+            content: `USD ${parseFloat(values.taxAmount).toFixed(2)}`,
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          `Transportation in ${originCountry}`,
+          {
+            content: "USD 0.00",
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          `Shipping to ${
+            countries.find((c) => c.alpha3Code === values.destinationCountry)
+              ?.name
+          }`,
+          {
+            content: `USD ${parseFloat(values.shippingCost).toFixed(2)}`,
+            styles: { halign: "right", fontSize: 8 },
+          },
+        ],
+        [
+          {
+            content: "Total Value",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          {
+            content: `USD ${parseFloat(values.total).toFixed(2)}`,
+            styles: { fontStyle: "bold", halign: "right", fontSize: 8 },
+          },
+        ],
+      ],
+      theme: "grid",
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        0: { cellWidth: 110 },
+        1: { cellWidth: 70 },
+      },
+    });
+
+    // ===== Footer =====
+    doc.setFontSize(7);
+    doc.text(
+      "THIS PURCHASE ORDER IS SUBJECT TO OILINDUSTRYSUPPLIESSERVICESLIMITED TERMS AND CONDITIONS AVAILABLE\n" +
+        "https://www.OILINDUSTRYSUPPLIESSERVICESLIMITED.com.pdf. ACCEPTANCE OF THIS PURCHASE ORDER BY THE SUPPLIER SHALL BE\n" +
+        "DEEMED ACCEPTANCE OF SUCH TERMS AND CONDITIONS AND WAIVER OF ANY OTHER PROVISIONS PROVIDED BY THE SUPPLIER,\n" +
+        "UNLESS OTHERWISE AGREED IN A WRITING SIGNED BY THE DULY APPOINTED REPRESENTATIVE OF OILINDUSTRYSUPPLIESSERVICESLIMITED Iraq Branch.",
+      15,
+      //@ts-ignore
+      doc.lastAutoTable.finalY + 10,
+      { maxWidth: 180 }
+    );
+
+    doc.text(
+      "Electronic Approved by _______________________",
+      15,
+      doc.internal.pageSize.height - 12
+    );
+
+    doc.save(`purchase-order-${values.prNumber}.pdf`);
   };
+
+  const generateExcel = (order: any) => {
+    const wb = XLSX.utils.book_new();
+    const wsData = [
+      ["Purchase Order", order.poNumber],
+      ["Date", format(new Date(order.createdAt), "yyyy-MM-dd")],
+      ["Vendor", order.vendorName || order.vendor],
+      [],
+      [
+        "Material",
+        "Description",
+        "Quantity",
+        "Unit",
+        "Unit Cost",
+        "Line Total",
+      ],
+      ...order.items.map((item: any) => [
+        item.material,
+        item.description,
+        item.qty,
+        item.unit,
+        item.unitCost,
+        item.lineTotal,
+      ]),
+      [],
+      ["Total", order.total],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, "Purchase Order");
+    XLSX.writeFile(wb, `purchase-order-${order.poNumber}.xlsx`);
+  };
+
   return (
     <div className="container mx-auto py-10">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">
-            Purchase Requisition Approval
-          </CardTitle>
-          <CardDescription>
-            Review and approve purchase requisitions
-          </CardDescription>
+          <CardTitle className="text-2xl">Order Approval</CardTitle>
+          <CardDescription>Review and approve purchase orders</CardDescription>
         </CardHeader>
         <CardContent>
           {actionSuccess && (
@@ -376,9 +650,8 @@ function PRApprovalDashboard() {
             </Tabs>
 
             <div className="relative w-full md:w-auto">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search PR#, requester, department..."
+                placeholder="Search PO#, vendor..."
                 className="pl-8 w-full md:w-[300px]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -393,11 +666,11 @@ function PRApprovalDashboard() {
                   <TableRow>
                     <TableHead
                       className="w-[150px] cursor-pointer"
-                      onClick={() => handleSort("id")}
+                      onClick={() => handleSort("poNumber")}
                     >
                       <div className="flex items-center">
-                        PR Number
-                        {sortConfig?.key === "id" &&
+                        PO Number
+                        {sortConfig?.key === "poNumber" &&
                           (sortConfig.direction === "asc" ? (
                             <ChevronUp className="ml-1 h-4 w-4" />
                           ) : (
@@ -407,11 +680,11 @@ function PRApprovalDashboard() {
                     </TableHead>
                     <TableHead
                       className="cursor-pointer"
-                      onClick={() => handleSort("requester")}
+                      onClick={() => handleSort("vendor")}
                     >
                       <div className="flex items-center">
-                        Requester
-                        {sortConfig?.key === "requester" &&
+                        Vendor
+                        {sortConfig?.key === "vendor" &&
                           (sortConfig.direction === "asc" ? (
                             <ChevronUp className="ml-1 h-4 w-4" />
                           ) : (
@@ -419,14 +692,13 @@ function PRApprovalDashboard() {
                           ))}
                       </div>
                     </TableHead>
-                    <TableHead>Department</TableHead>
                     <TableHead
                       className="cursor-pointer"
-                      onClick={() => handleSort("date")}
+                      onClick={() => handleSort("createdAt")}
                     >
                       <div className="flex items-center">
                         Date
-                        {sortConfig?.key === "date" &&
+                        {sortConfig?.key === "createdAt" &&
                           (sortConfig.direction === "asc" ? (
                             <ChevronUp className="ml-1 h-4 w-4" />
                           ) : (
@@ -439,33 +711,33 @@ function PRApprovalDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedPRs.length === 0 ? (
+                  {sortedOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
-                        No purchase requisitions found.
+                      <TableCell colSpan={5} className="h-24 text-center">
+                        No orders found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    sortedPRs.map((pr, index) => (
-                      <TableRow key={pr.id}>
+                    sortedOrders.map((order) => (
+                      <TableRow key={order.id}>
                         <TableCell className="font-medium">
-                          {pr.prNumber}
+                          {order.poNumber}
                         </TableCell>
-                        <TableCell>{pr.requester}</TableCell>
-                        <TableCell>{pr.department}</TableCell>
                         <TableCell>
-                          {format(
-                            formatFirebaseTime(pr?.date),
-                            "MMM dd, yyyy hh:mm a"
-                          )}
+                          {order?.vendorName || order.vendor}
                         </TableCell>
-                        <TableCell>{getStatusBadge(pr.status)}</TableCell>
+                        <TableCell>
+                          {order.createdAt
+                            ? format(order.createdAt, "MMM dd, yyyy hh:mm a")
+                            : "N/A"}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(order.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDetailView(pr)}
+                              onClick={() => openDetailView(order)}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               View
@@ -474,19 +746,19 @@ function PRApprovalDashboard() {
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => openDeleteDialog(pr.id)}
+                              onClick={() => openDeleteDialog(order.id)}
                             >
                               <Trash className="h-4 w-4 mr-1" />
                               Delete
                             </Button>
 
-                            {pr.status === "pending" && (
+                            {order.status === "pending" && (
                               <>
                                 <Button
                                   variant="default"
                                   size="sm"
                                   onClick={() =>
-                                    openActionDialog(pr, "approve")
+                                    openActionDialog(order, "approve")
                                   }
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
@@ -495,27 +767,15 @@ function PRApprovalDashboard() {
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  onClick={() => openActionDialog(pr, "reject")}
+                                  onClick={() =>
+                                    openActionDialog(order, "reject")
+                                  }
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   Reject
                                 </Button>
                               </>
                             )}
-
-                            {/* <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Filter className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  <Archive className="h-4 w-4 mr-2" />
-                                  Archive
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu> */}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -528,63 +788,39 @@ function PRApprovalDashboard() {
         </CardContent>
       </Card>
 
-      {/* PR Detail Dialog */}
+      {/* Order Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Purchase Requisition Details</DialogTitle>
+            <DialogTitle>Order Details</DialogTitle>
             <DialogDescription>
-              {selectedPR?.prNumber} - Submitted on{" "}
-              {selectedPR &&
-                format(
-                  formatFirebaseTime(selectedPR?.date),
-                  "MMM dd, yyyy hh:mm a"
-                )}
+              {selectedOrder?.poNumber} - Submitted on{" "}
+              {selectedOrder &&
+                format(selectedOrder?.createdAt, "MMM dd, yyyy hh:mm a")}
             </DialogDescription>
           </DialogHeader>
 
-          {selectedPR && (
+          {selectedOrder && (
             <div className="grid gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-sm font-semibold mb-1">Requester</h4>
-                  <p className="text-sm">{selectedPR.requester}</p>
+                  <h4 className="text-sm font-semibold mb-1">Vendor</h4>
+                  <p className="text-sm">
+                    {selectedOrder?.vendorName || selectedOrder.vendor}
+                  </p>
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold mb-1">Status</h4>
-                  <div>{getStatusBadge(selectedPR.status)}</div>
+                  <div>{getStatusBadge(selectedOrder.status)}</div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold mb-1">Department</h4>
-                  <p className="text-sm">{selectedPR.department}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold mb-1">Location</h4>
-                  <p className="text-sm">{selectedPR.location}</p>
+                  <h4 className="text-sm font-semibold mb-1">Total</h4>
+                  <p className="text-sm">${selectedOrder.total}</p>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold mb-1">Justification</h4>
-                <p className="text-sm p-3 bg-muted rounded-md">
-                  {selectedPR.justification}
-                </p>
-              </div>
-
-              {selectedPR.status === "rejected" &&
-                selectedPR.rejectionReason && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-1 text-destructive">
-                      Rejection Reason
-                    </h4>
-                    <p className="text-sm p-3 bg-destructive/10 rounded-md text-destructive">
-                      {selectedPR.rejectionReason}
-                    </p>
-                  </div>
-                )}
-
-              <div>
-                <h4 className="text-sm font-semibold mb-2">Requested Items</h4>
+                <h4 className="text-sm font-semibold mb-2">Order Items</h4>
                 <div className="border rounded-md">
                   <Table>
                     <TableHeader>
@@ -596,7 +832,7 @@ function PRApprovalDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedPR.items.map((item: any, index: number) => (
+                      {selectedOrder.items.map((item: any, index: number) => (
                         <TableRow key={index}>
                           <TableCell>{item.material}</TableCell>
                           <TableCell>{item.description}</TableCell>
@@ -612,12 +848,28 @@ function PRApprovalDashboard() {
           )}
 
           <DialogFooter className="gap-2 sm:gap-0">
-            {selectedPR?.status === "pending" && (
+            {selectedOrder?.status === "approved" && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => generateExcel(selectedOrder)}
+                >
+                  Generate Excel
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={() => generatePDF(selectedOrder)}
+                >
+                  Generate PDF
+                </Button>
+              </>
+            )}
+            {selectedOrder?.status === "pending" && (
               <>
                 <Button
                   onClick={() => {
                     setIsDetailOpen(false);
-                    openActionDialog(selectedPR, "reject");
+                    openActionDialog(selectedOrder, "reject");
                   }}
                   variant="destructive"
                 >
@@ -627,22 +879,13 @@ function PRApprovalDashboard() {
                 <Button
                   onClick={() => {
                     setIsDetailOpen(false);
-                    openActionDialog(selectedPR, "approve");
+                    openActionDialog(selectedOrder, "approve");
                   }}
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Approve
                 </Button>
               </>
-            )}
-            {selectedPR?.status === "approved" && (
-              <Button
-                onClick={() => generatePRPDF(selectedPR)}
-                variant="default"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download PDF
-              </Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -653,11 +896,10 @@ function PRApprovalDashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === "approve" ? "Approve" : "Reject"} Purchase
-              Requisition
+              {actionType === "approve" ? "Approve" : "Reject"} Order
             </DialogTitle>
             <DialogDescription>
-              {selectedPR?.prNumber} -{" "}
+              {selectedOrder?.poNumber} -{" "}
               {actionType === "approve"
                 ? "Confirm approval"
                 : "Provide rejection reason"}
@@ -672,12 +914,11 @@ function PRApprovalDashboard() {
               >
                 Rejection Reason
               </label>
-              <Textarea
+              <Input
                 id="comment"
                 placeholder="Provide a reason for rejection..."
                 value={actionComment}
                 onChange={(e) => setActionComment(e.target.value)}
-                className="min-h-[100px]"
               />
             </div>
           )}
@@ -712,8 +953,8 @@ function PRApprovalDashboard() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this purchase requisition? This
-              action cannot be undone.
+              Are you sure you want to delete this order? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -733,8 +974,8 @@ function PRApprovalDashboard() {
   );
 }
 
-export default withAuth(PRApprovalDashboard, {
-  requiredRole: USER_ROLES.ADMIN + "ds",
+export default withAuth(OrderApprovalDashboard, {
+  requiredRole: USER_ROLES.ADMIN,
   requiredPermissions: [
     FIREBASE_RESOURCES.INVOICES + ":view",
     FIREBASE_RESOURCES.INVOICES + ":edit",

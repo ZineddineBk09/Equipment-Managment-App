@@ -16,14 +16,15 @@ import dayjs from "dayjs";
 import { toast } from "@/hooks/use-toast";
 import { getTimeCategory, playNotificationSound } from "@/utils";
 import Link from "next/link";
+import { FIREBASE_COLLECTIONS } from "@/enums/collections";
 
 export function NotificationsPanel() {
   const [notifications, setNotifications] = useState([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const tasksQuery = query(collection(db, "tasks"));
-    const equipmentQuery = query(collection(db, "equipments"));
+    const tasksQuery = query(collection(db, FIREBASE_COLLECTIONS.TASKS));
+    const equipmentQuery = query(collection(db, FIREBASE_COLLECTIONS.EQUIPMENTS));
 
     const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
       const tasksNotifications = snapshot.docs

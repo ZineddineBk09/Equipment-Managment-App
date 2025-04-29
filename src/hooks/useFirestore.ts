@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createPR, listenForPRUpdates, updatePRStatus, generatePO } from "@/lib/firebase";
+import { createPR, listenForPRUpdates, updatePRStatus, generatePO, listenForOrderUpdates, updateOrderStatus } from "@/lib/firebase";
 import { PRFormData, Status } from "@/interfaces/firebase";
 
 export const useCreatePR = () => {
@@ -74,4 +74,39 @@ export const useGeneratePO = () => {
   };
 
   return { generate, loading, error };
+};
+
+export const useOrderUpdates = () => {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = listenForOrderUpdates((newData) => {
+      setData(newData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return { data, loading };
+};
+
+export const useUpdateOrderStatus = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateStatus = async (orderId: string, newStatus: Status) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await updateOrderStatus(orderId, newStatus);
+    } catch (err) {
+      setError("Failed to update order status.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { updateStatus, loading, error };
 };

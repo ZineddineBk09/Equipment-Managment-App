@@ -9,11 +9,12 @@ import {
   Home,
   Users,
   ChevronLeft,
-  Container,
+  Package,
   File,
   FileCheck,
   PackageSearch,
   Send,
+  PackageCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,12 @@ const hrDashboard = [
     icon: Users,
     permissions: [FIREBASE_RESOURCES.USERS + ":view"],
   },
+  {
+    name: "Messages",
+    href: "/dashboard/hr/messages",
+    icon: Send,
+    permissions: [FIREBASE_RESOURCES.INVOICES + ":view"],
+  },
 ];
 
 const invoicesDashboard = [
@@ -74,19 +81,19 @@ const invoicesDashboard = [
   {
     name: "Order",
     href: "/dashboard/invoices/order/create",
-    icon: Container,
+    icon: Package,
+    permissions: [FIREBASE_RESOURCES.INVOICES + ":view"],
+  },
+  {
+    name: "Approve Order",
+    href: "/dashboard/invoices/order/approval",
+    icon: PackageCheck,
     permissions: [FIREBASE_RESOURCES.INVOICES + ":view"],
   },
   {
     name: "Vendors",
     href: "/dashboard/invoices/vendors",
     icon: PackageSearch,
-    permissions: [FIREBASE_RESOURCES.INVOICES + ":view"],
-  },
-  {
-    name: "Messages",
-    href: "/dashboard/invoices/messages",
-    icon: Send,
     permissions: [FIREBASE_RESOURCES.INVOICES + ":view"],
   },
 ];
@@ -181,12 +188,12 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
       >
         <ChevronLeft
           className={cn(
-            "font-thin text-xs text-red-950 group-hover:-translate-x-1 duration-300",
+            "font-thin text-xs text-purple-900 group-hover:-translate-x-1 duration-300",
             collapsed && "hidden"
           )}
         />
         <img
-          src="/logo-removebg.png"
+          src="/logo-removebg-new.png"
           alt=""
           className={cn("h-12 w-12", collapsed && "h-8 w-8")}
         />

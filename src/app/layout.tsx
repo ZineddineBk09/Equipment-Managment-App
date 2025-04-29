@@ -27,8 +27,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://resenix-pro.vercel.app"),
   title: {
-    default: "ResenixPro | Industrial Equipment Management System",
-    template: "%s | ResenixPro - Equipment Management",
+    default: "ResenixPro | Oil Industry Supplies & Services Ltd System",
+    template: "%s | ResenixPro - Oil Industry Supplies & Services Ltd",
   },
   description:
     "Enterprise-grade equipment management and maintenance tracking system. Optimize maintenance schedules, track equipment health, reduce downtime, and enhance operational efficiency with real-time monitoring.",
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://resenix-pro.vercel.app",
     siteName: "ResenixPro",
-    title: "ResenixPro - Industrial Equipment Management System",
+    title: "ResenixPro - Oil Industry Supplies & Services Ltd System",
     description:
       "Enterprise equipment management and maintenance tracking platform",
     images: [
@@ -116,7 +116,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@resenixpro",
     creator: "@resenixpro",
-    title: "ResenixPro - Industrial Equipment Management",
+    title: "ResenixPro - Oil Industry Supplies & Services Ltd",
     description:
       "Transform your equipment maintenance with our intelligent management system",
     images: {

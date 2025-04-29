@@ -65,12 +65,14 @@ import * as XLSX from "xlsx";
 // import { generatePDF } from "../../utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { fetchVendors } from "@/lib/firebase";
 import withAuth from "@/lib/hocs/withAuth";
 import { USER_ROLES, FIREBASE_RESOURCES } from "@/enums/resources";
 import { useCountries } from "@/hooks/useCountries";
+import { FIREBASE_COLLECTIONS } from "@/enums/collections";
+import { request } from "http";
 
 // Form schema
 const formSchema = z.object({
@@ -91,7 +93,7 @@ const formSchema = z.object({
       z.object({
         material: z.string(),
         description: z.string(),
-        qty: z.string(),
+        qty: z.number(),
         unit: z.string(),
         unitCost: z.string().min(1, { message: "Unit cost is required" }),
         lineTotal: z.string(),
@@ -113,6 +115,9 @@ function POGenerationPage() {
   const [termsDialogOpen, setTermsDialogOpen] = useState(false);
   const [prList, setPrList] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
+  const [documents, setDocuments] = useState([
+    { name: "", requiredFromSupplier: false, requiredFromForwarder: false },
+  ]);
   const countries = useCountries();
 
   useEffect(() => {
@@ -202,7 +207,7 @@ function POGenerationPage() {
     const items = form.getValues("items");
     const item = items[index];
 
-    const qty = parseFloat(item.qty) || 0;
+    const qty = Number(item.qty) || 0;
     const unitCost = parseFloat(item.unitCost) || 0;
     const lineTotal = (qty * unitCost).toFixed(2);
 
@@ -269,6 +274,25 @@ function POGenerationPage() {
     form.watch("shippingMethod"),
   ]);
 
+  const addDocument = () => {
+    setDocuments([
+      ...documents,
+      { name: "", requiredFromSupplier: false, requiredFromForwarder: false },
+    ]);
+  };
+
+  const updateDocument = (index: number, field: string, value: any) => {
+    const updatedDocuments = [...documents];
+    //@ts-ignore
+    updatedDocuments[index][field] = value;
+    setDocuments(updatedDocuments);
+  };
+
+  const removeDocument = (index: number) => {
+    const updatedDocuments = documents.filter((_, i) => i !== index);
+    setDocuments(updatedDocuments);
+  };
+
   const generatePDF = async (values: z.infer<typeof formSchema>) => {
     const doc = new jsPDF();
     const currentDate = format(new Date(), "yyyy-MM-dd");
@@ -292,10 +316,10 @@ function POGenerationPage() {
 
     // ===== Header Section =====
     // Company Logo (Left Side)
-    doc.addImage("/logo-removebg.png", "PNG", 15, 4, 30, 30);
+    doc.addImage("/logo-removebg-new.png", "PNG", 15, 4, 30, 30);
 
     // QR Code (Right Side)
-    doc.addImage(qrCodeUrl, "PNG", doc.internal.pageSize.width - 40, 5, 20, 20);
+    doc.addImage(qrCodeUrl, "PNG", doc.internal.pageSize.width - 40, 9, 20, 20);
     // place the QR code in the center bottom of the page
 
     // Company details (Centered below logo and QR)
@@ -318,7 +342,7 @@ function POGenerationPage() {
       }
     );
     doc.text(
-      "admin@oilindustrysupplieserviceslimited.com | +9647801552390",
+      "admin@oilindustrysuppliesandserviceslimited.com | +9647801552390",
       doc.internal.pageSize.width / 2,
       25,
       {
@@ -359,7 +383,7 @@ function POGenerationPage() {
           selectedVendor
             ? `${selectedVendor.name}\n${selectedVendor.address}\n${selectedVendor.city}, ${selectedVendor.country}\n${selectedVendor.email}\n${selectedVendor.phone}`
             : "Vendor not selected",
-          "OILINDUSTRYSUPPLIESSERVICESLIMITED\nAljizzer Street\nBasra, Basra, 61002\nIraq\nadmin@oilindustrysupplieserviceslimited.com\n+9647801552390",
+          "OILINDUSTRYSUPPLIESSERVICESLIMITED\nAljizzer Street\nBasra, Basra, 61002\nIraq\nadmin@oilindustrysuppliesandserviceslimited.com\n+9647801552390",
         ],
         [
           {
@@ -461,7 +485,27 @@ function POGenerationPage() {
               fillColor: [51, 51, 51],
               fontSize: 8,
             },
-            colSpan: 3,
+            colSpan: 1,
+          },
+          {
+            content: "FROM SUPPLIER",
+            styles: {
+              fontStyle: "bold",
+              textColor: [255, 255, 255],
+              fillColor: [51, 51, 51],
+              fontSize: 8,
+            },
+            colSpan: 1,
+          },
+          {
+            content: "FROM FORWARDER",
+            styles: {
+              fontStyle: "bold",
+              textColor: [255, 255, 255],
+              fillColor: [51, 51, 51],
+              fontSize: 8,
+            },
+            colSpan: 1,
           },
           {
             content: "PAYMENT TERMS",
@@ -475,15 +519,34 @@ function POGenerationPage() {
           },
         ],
         //@ts-ignore
-        ...requiredDocs.map((doc) => [
-          doc.item,
-          { content: "[YES]", styles: { fontStyle: "bold", fontSize: 8 } },
-          { content: "[yes]", styles: { fontStyle: "bold", fontSize: 8 } },
-          doc.item === "Original Invoice & C.O.O"
+        // ...requiredDocs.map((doc) => [
+        //   doc.item,
+        //   { content: "[YES]", styles: { fontStyle: "bold", fontSize: 8 } },
+        //   { content: "[yes]", styles: { fontStyle: "bold", fontSize: 8 } },
+        //   doc.item === "Original Invoice & C.O.O"
+        //     ? {
+        //         content: selectedVendor.terms,
+        //         styles: { fontStyle: "normal", fontSize: 8 },
+        //         rowSpan: requiredDocs.length,
+        //       }
+        //     : null,
+        // ]),
+        // replace hardcoded values with dynamic ones using documents state var
+        ...documents.map((doc, index) => [
+          doc.name,
+          {
+            content: doc.requiredFromSupplier ? "[YES]" : "[NO]",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          {
+            content: doc.requiredFromForwarder ? "[YES]" : "[NO]",
+            styles: { fontStyle: "bold", fontSize: 8 },
+          },
+          index === 0
             ? {
                 content: selectedVendor.terms,
                 styles: { fontStyle: "normal", fontSize: 8 },
-                rowSpan: requiredDocs.length,
+                rowSpan: documents.length,
               }
             : null,
         ]),
@@ -500,14 +563,42 @@ function POGenerationPage() {
         fontSize: 8,
       },
       columnStyles: {
-        0: { cellWidth: 70 },
-        1: { cellWidth: 20 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 70 },
+        0: { cellWidth: 65 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 65 },
       },
     });
 
-    // ===== Financial Summary =====
+    // ===== Doccuments Requirements =====
+    // autoTable(doc, {
+    //   //@ts-ignore
+    //   startY: doc.lastAutoTable.finalY + 8,
+    //   head: [
+    //     ["Document Name", "Required from Supplier", "Required from Forwarder"],
+    //   ],
+    //   body: documents.map((doc) => [
+    //     doc.name,
+    //     doc.requiredFromSupplier ? "YES" : "NO",
+    //     doc.requiredFromForwarder ? "YES" : "NO",
+    //   ]),
+    //   theme: "grid",
+    //   styles: {
+    //     fontSize: 8,
+    //     cellPadding: 2,
+    //   },
+    //   headStyles: {
+    //     fillColor: [51, 51, 51],
+    //     textColor: 255,
+    //     fontStyle: "bold",
+    //     fontSize: 8,
+    //   },
+    //   columnStyles: {
+    //     0: { cellWidth: 110 },
+    //     1: { cellWidth: 70 },
+    //     2: { cellWidth: 70 },
+    //   },
+    // });
     autoTable(doc, {
       //@ts-ignore
       startY: doc.lastAutoTable.finalY + 8,
@@ -652,21 +743,65 @@ function POGenerationPage() {
     XLSX.writeFile(wb, `purchase-order-${poNumber}.xlsx`);
   };
 
+  const saveOrderToFirebase = async (values: z.infer<typeof formSchema>) => {
+    const orderData = {
+      poNumber,
+      prNumber: values.prNumber,
+      requester: selectedPR?.requester,
+      department: selectedPR?.department,
+      location: selectedPR?.location,
+      vendor: values.vendor,
+      vendorName: vendors.find((v) => v.id === values.vendor)?.name,
+      items: values.items,
+      requiredDocuments: documents,
+      paymentTerms: values.paymentTerms,
+      deliveryDate: values.deliveryDate,
+      shippingAddress: values.shippingAddress,
+      originCountry: values.originCountry,
+      destinationCountry: values.destinationCountry,
+      shippingMethod: values.shippingMethod,
+      subtotal: values.subtotal,
+      taxRate: values.taxRate,
+      taxAmount: values.taxAmount,
+      shippingCost: values.shippingCost,
+      total: values.total,
+      notes: values.notes,
+      status: "pending", // Default status for new orders
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await addDoc(collection(db, FIREBASE_COLLECTIONS.ORDERS), orderData);
+      setGenerateSuccess(true);
+      form.reset();
+    } catch (error) {
+      console.error("Error saving order:", error);
+    } finally {
+      setIsGenerating(false);
+      form.reset();
+    }
+  };
+
   // Handle form submission
+  // const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  //   // setIsGenerating(true);
+
+  //   // Simulate API call
+  //   // await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  //   await generatePDF(values);
+  //   setIsGenerating(false);
+  //   setGenerateSuccess(true);
+
+  //   // Reset success message after a delay
+  //   setTimeout(() => {
+  //     setGenerateSuccess(false);
+  //   }, 3000);
+  // };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    // setIsGenerating(true);
-
-    // Simulate API call
-    // await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    await generatePDF(values);
-    setIsGenerating(false);
-    setGenerateSuccess(true);
-
-    // Reset success message after a delay
-    setTimeout(() => {
-      setGenerateSuccess(false);
-    }, 3000);
+    setIsGenerating(true);
+    await saveOrderToFirebase(values);
   };
 
   return (
@@ -1026,6 +1161,103 @@ function POGenerationPage() {
                   </div>
                 )}
 
+                <div className="bg-muted/30 p-4 rounded-lg">
+                  <h3 className="font-medium mb-4">Document Requirements</h3>
+                  <div className="border rounded-md mb-4">
+                    <ScrollArea className="w-full overflow-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[300px]">
+                              Document Name
+                            </TableHead>
+                            <TableHead className="w-[150px]">
+                              Required from Supplier
+                            </TableHead>
+                            <TableHead className="w-[150px]">
+                              Required from Forwarder
+                            </TableHead>
+                            <TableHead className="w-[80px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {documents.map((doc, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <Input
+                                  value={doc.name}
+                                  placeholder="Enter document name"
+                                  onChange={(e) =>
+                                    updateDocument(
+                                      index,
+                                      "name",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center justify-center">
+                                  <Input
+                                    type="checkbox"
+                                    checked={doc.requiredFromSupplier}
+                                    className="h-5 w-5"
+                                    onChange={(e) =>
+                                      updateDocument(
+                                        index,
+                                        "requiredFromSupplier",
+                                        e.target.checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center justify-center">
+                                  <Input
+                                    type="checkbox"
+                                    checked={doc.requiredFromForwarder}
+                                    className="h-5 w-5"
+                                    onChange={(e) =>
+                                      updateDocument(
+                                        index,
+                                        "requiredFromForwarder",
+                                        e.target.checked
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeDocument(index)}
+                                  disabled={documents.length === 1}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addDocument}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Document
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Totals */}
                 {selectedPR && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1201,7 +1433,7 @@ function POGenerationPage() {
                 )}
               </div>
             </CardContent>
-            <CardFooter className="flex justify-between border-t pt-6">
+            {/* <CardFooter className="flex justify-between border-t pt-6">
               <Button
                 variant="outline"
                 type="button"
@@ -1231,6 +1463,28 @@ function POGenerationPage() {
                   Generate PDF
                 </Button>
               </div>
+            </CardFooter> */}
+            <CardFooter className="flex justify-between border-t pt-6">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => form.reset()}
+              >
+                Cancel
+              </Button>
+              <Button
+                // type="submit"
+                onClick={() => {
+                  console.log("errors:", form.formState.errors);
+                  form.handleSubmit(onSubmit);
+                }}
+                disabled={!selectedPR || isGenerating}
+              >
+                {isGenerating && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Create Order
+              </Button>
             </CardFooter>
           </Card>
         </form>

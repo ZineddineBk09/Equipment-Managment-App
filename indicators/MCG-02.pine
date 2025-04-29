@@ -1,0 +1,147 @@
+//@version=5
+indicator("MACRO MARKET DASHBOARD [DXY + Yields + RSI + VIX + BTC.D]", overlay=false, scale=scale.left)
+
+// ===== INPUTS =====
+// 1. DXY (US Dollar Index)
+showDXY      = input.bool(true, "Show DXY Trend", group="Macro Indicators")
+dxySymbol    = input.string("TVC:DXY", "DXY Symbol", group="Macro Indicators")
+
+// 2. 10-Year Treasury Yield (TNX)
+showTNX      = input.bool(true, "Show 10Y Yield (TNX)", group="Macro Indicators")
+tnxSymbol    = input.string("TVC:TNX", "TNX Symbol", group="Macro Indicators")
+
+// 3. VIX (Market Fear Index)
+showVIX      = input.bool(true, "Show VIX", group="Macro Indicators")
+vixSymbol    = input.string("CBOE:VIX", "VIX Symbol", group="Macro Indicators")
+
+// 4. Bitcoin Dominance (BTC.D)
+showBTCDom   = input.bool(true, "Show BTC Dominance", group="Crypto")
+btcDomSymbol = input.string("CRYPTOCAP:BTC.D", "BTC.D Symbol", group="Crypto")
+
+// 5. Multi-Timeframe RSI
+rsiPeriod    = input(14, "RSI Period", group="Momentum")
+useWeeklyRSI = input.bool(true, "Use Weekly RSI?", group="Momentum")
+
+// ===== FETCH DATA =====
+// 1. DXY (Daily Close)
+dxyClose = request.security(dxySymbol, "D", close)
+
+// 2. TNX (10Y Yield Daily)
+tnxClose = request.security(tnxSymbol, "D", close)
+
+// 3. VIX (Daily)
+vixClose = request.security(vixSymbol, "D", close)
+
+// 4. BTC Dominance (Daily)
+btcDomClose = request.security(btcDomSymbol, "D", close)
+
+// 5. Multi-Timeframe RSI
+rsiDaily  = ta.rsi(close, rsiPeriod)
+rsiWeekly = request.security(syminfo.tickerid, "W", ta.rsi(close, rsiPeriod))
+
+// ===== PLOTTING =====
+// 1. DXY Trend
+plot(showDXY ? dxyClose : na, "DXY", color=#2962FF, linewidth=2)
+
+// 2. TNX (10Y Yield)
+plot(showTNX ? tnxClose : na, "10Y Yield", color=#FF6D00, linewidth=2)
+
+// 3. VIX (Fear Index)
+plot(showVIX ? vixClose : na, "VIX", color=#FF1744, linewidth=2)
+
+// 4. BTC Dominance
+plot(showBTCDom ? btcDomClose : na, "BTC.D", color=#00E676, linewidth=2)
+
+// 5. Multi-Timeframe RSI
+plot(rsiDaily, "Daily RSI", color=color.blue)
+plot(useWeeklyRSI ? rsiWeekly : na, "Weekly RSI", color=color.red)
+
+// ===== ALERTS & THRESHOLDS =====
+// Risk-On / Risk-Off Conditions
+riskOn  = (dxyClose < ta.sma(dxyClose, 50)) and (tnxClose < 4.0) and (vixClose < 20)
+riskOff = (dxyClose > ta.sma(dxyClose, 50)) and (tnxClose > 4.0) and (vixClose > 30)
+
+// Background Color
+bgcolor(riskOn ? color.new(color.green, 50) : riskOff ? color.new(color.red, 50) : na)
+
+// ===== ALERTS =====
+alertcondition(riskOn, "Risk-On Mode (Buy Dips)", "Macro: Risk-On (DXY weak, yields low, VIX calm)")
+alertcondition(riskOff, "Risk-Off Mode (Caution)", "Macro: Risk-Off (DXY strong, yields high, VIX spiking)")
+// © Da_Prof (Optimized by DeepSeek)
+//@version=5
+indicator("MCG+ - Meme Coin Gains [Optimized]", overlay=true)
+
+// ==== Inputs ====
+// Original Meme Coins
+doge_use    = input.bool(true, "DogeCoin (DOGE)")
+shib_use    = input.bool(true, "Shiba Inu (SHIB)")
+pepe_use    = input.bool(true, "Pepe (PEPE)")
+wif_use     = input.bool(true, "dogwifhat (WIF)")
+popcat_use  = input.bool(true, "Popcat (POPCAT)")
+bonk_use    = input.bool(true, "Bonk (BONK)")
+floki_use   = input.bool(true, "Floki Inu (FLOKI)")
+brett_use   = input.bool(true, "Brett (BRETT)")
+mew_use     = input.bool(true, "cat in a dogs world (MEW)")
+mog_use     = input.bool(true, "Mog Coin (MOG)")
+not_use     = input.bool(true, "Notcoin (NOT)")
+neiro_use   = input.bool(true, "First Neiro On Ethereum (NEIRO)")
+
+// Newly Added Meme Coins (SPX, GIGA, FART)
+spx_use     = input.bool(true, "SPX6900 (SPX)")
+giga_use    = input.bool(true, "Gigashad (GIGA)")
+fart_use    = input.bool(true, "Fartcoin (FART)")
+
+mcg_period = input.int(50, "Percent gain period", minval=1)
+fast_sma_period = input.int(20, "SMA Period", minval=1)
+
+// ==== Fetch Prices (Daily Close) ====
+getClose(sym) => request.security(sym, "D", close)
+
+doge_close  = getClose("DOGEUSDT")
+shib_close  = getClose("SHIBUSDT")
+pepe_close  = getClose("PEPEUSDT")
+wif_close   = getClose("WIFUSDT")
+popcat_close= getClose("POPCATUSDT")
+bonk_close  = getClose("BONKUSDT")
+floki_close = getClose("FLOKIUSDT")
+brett_close = getClose("BRETTUSDT")
+mew_close   = getClose("MEWUSDT")
+mog_close   = getClose("MOGUSDT")
+not_close   = getClose("NOTUSDT")
+neiro_close = getClose("NEIROUSDT")
+spx_close   = getClose("SPXUSDT")  // New coins
+giga_close  = getClose("GIGAUSDT")
+fart_close  = getClose("FARTCOINUSDT")
+
+// ==== Calculate Percentage Gains ====
+calculateGain(use, close_curr, close_hist) =>
+    use and not na(close_hist) ? (close_curr - close_hist) / close_hist : 0.0
+
+MCG = calculateGain(doge_use, doge_close, doge_close[mcg_period]) + calculateGain(shib_use, shib_close, shib_close[mcg_period]) + calculateGain(pepe_use, pepe_close, pepe_close[mcg_period]) + calculateGain(wif_use, wif_close, wif_close[mcg_period]) + calculateGain(popcat_use, popcat_close, popcat_close[mcg_period]) + calculateGain(bonk_use, bonk_close, bonk_close[mcg_period]) + calculateGain(floki_use, floki_close, floki_close[mcg_period]) + calculateGain(brett_use, brett_close, brett_close[mcg_period]) + calculateGain(mew_use, mew_close, mew_close[mcg_period]) + calculateGain(mog_use, mog_close, mog_close[mcg_period]) + calculateGain(not_use, not_close, not_close[mcg_period]) + calculateGain(neiro_use, neiro_close, neiro_close[mcg_period]) + calculateGain(spx_use, spx_close, spx_close[mcg_period]) + calculateGain(giga_use, giga_close, giga_close[mcg_period]) + calculateGain(fart_use, fart_close, fart_close[mcg_period])
+
+// ==== Count Active Coins ====
+denom =  (doge_use ? 1 : 0) + (shib_use ? 1 : 0) + (pepe_use ? 1 : 0) + (wif_use ? 1 : 0) + (popcat_use ? 1 : 0) + (bonk_use ? 1 : 0) + (floki_use ? 1 : 0) + (brett_use ? 1 : 0) + (mew_use ? 1 : 0) + (mog_use ? 1 : 0) + (not_use ? 1 : 0) + (neiro_use ? 1 : 0) + (spx_use ? 1 : 0) + (giga_use ? 1 : 0) + (fart_use ? 1 : 0)  // New coins
+
+// ==== Final MCG Calculation ====
+MCG_avg = denom > 0 ? MCG / denom : na
+MCG_log = math.log10(MCG_avg + 1) * 100  // Normalized log scale
+MCG_sma = ta.sma(MCG_log, fast_sma_period)
+
+// ==== Thresholds & Alerts ====
+top_line = input(60, "Top Line Value")
+bottom_line = input(-12, "Bottom Line Value")
+
+// ==== Plotting ====
+// Background & Thresholds
+bgcolor(MCG_sma >= top_line ? color.new(color.red, 85) : MCG_sma <= bottom_line ? color.new(color.green, 85) : na)
+
+// MCG Line (Logarithmic)
+plot(MCG_log, "MCG", #29dfff, 2)
+plot(MCG_sma, "MCG SMA", color.rgb(183, 7, 37), 2)
+
+hline(top_line, "Top Line", color=color.red, linestyle=hline.style_dashed)
+hline(bottom_line, "Bottom Line", color=color.green, linestyle=hline.style_dashed)
+
+// Alerts
+alertcondition(MCG_sma >= top_line, "MCG SMA - High Risk Zone", "Meme coins are overbought!")
+alertcondition(MCG_sma <= bottom_line, "MCG SMA - Low Risk Zone", "Meme coins are oversold!")

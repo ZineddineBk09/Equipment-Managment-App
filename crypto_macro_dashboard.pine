@@ -1,0 +1,132 @@
+//@version=5
+indicator("CRYPTO MACRO DASHBOARD [DXY + Memes + Sentiment]", overlay=false, scale=scale.left, max_labels_count=500)
+
+// ===== 1. MACRO INPUTS =====
+showMacro = input.bool(true, "Show Macro Factors", group="Macro Economy")
+dxySymbol = input.string("TVC:DXY", "DXY Symbol", group="Macro Economy")
+tnxSymbol = input.string("TVC:TNX", "10Y Yield Symbol", group="Macro Economy")
+vixSymbol = input.string("CBOE:VIX", "VIX Symbol", group="Macro Economy")
+
+// ===== 2. CRYPTO MARKET INPUTS =====
+showCrypto = input.bool(true, "Show Crypto Metrics", group="Crypto")
+btcDomSymbol = input.string("BTC.D", "BTC Dominance", group="Crypto")
+// Using CryptoCompare's Fear & Greed Index instead
+fearGreedSymbol = input.string("VIX", "Fear & Greed Index", group="Crypto")
+
+// ===== 3. MEME COIN HYPE ENGINE =====
+showMemeHype = input.bool(true, "Show Meme Coin Hype", group="Meme Coins")
+memeCoinList = input.string("DOGEUSDT,SHIBUSDT,PEPEUSDT,WIFUSDT,BONKUSDT,FLOKIUSDT", "Meme Coin Pairs", group="Meme Coins")
+memePeriod = input.int(50, "Meme Hype Lookback Period", group="Meme Coins")
+
+// ===== 4. BTC MARKET STRUCTURE =====
+showBTCStruct = input.bool(true, "Show BTC Structure", group="Bitcoin")
+btcWeeklyMAPeriod = input.int(21, "BTC Weekly MA Period", group="Bitcoin")
+
+// ===== FETCH DATA =====
+// 1. Macro Data
+dxy = request.security(dxySymbol, "D", close)
+tnx = request.security(tnxSymbol, "D", close)
+vix = request.security(vixSymbol, "D", close)
+
+// 2. Crypto Data
+btcDom = request.security(btcDomSymbol, "D", close)
+fearGreed = request.security(fearGreedSymbol, "D", close)
+
+// 3. Meme Coin Hype Calculation
+getMemeReturns(pair) =>
+    current = request.security(pair, "D", close)
+    historical = request.security(pair, "D", close[memePeriod])
+    ret = (current - historical) / historical
+    ret
+
+// Individual meme coin calculations
+memeReturns = 0.0
+memeCount = 0
+
+// DOGE
+dogeRet = getMemeReturns("BINANCE:DOGEUSDT")
+memeReturns += nz(dogeRet)
+memeCount += not na(dogeRet) ? 1 : 0
+
+// SHIB
+shibRet = getMemeReturns("BINANCE:SHIBUSDT")
+memeReturns += nz(shibRet)
+memeCount += not na(shibRet) ? 1 : 0
+
+// PEPE
+pepeRet = getMemeReturns("BINANCE:PEPEUSDT")
+memeReturns += nz(pepeRet)
+memeCount += not na(pepeRet) ? 1 : 0
+
+// WIF
+wifRet = getMemeReturns("BINANCE:WIFUSDT")
+memeReturns += nz(wifRet)
+memeCount += not na(wifRet) ? 1 : 0
+
+// BONK
+bonkRet = getMemeReturns("BINANCE:BONKUSDT")
+memeReturns += nz(bonkRet)
+memeCount += not na(bonkRet) ? 1 : 0
+
+// FLOKI
+flokiRet = getMemeReturns("BINANCE:FLOKIUSDT")
+memeReturns += nz(flokiRet)
+memeCount += not na(flokiRet) ? 1 : 0
+
+memeHypeAvg = memeCount > 0 ? memeReturns / memeCount : na
+
+// 4. BTC Market Structure
+btcWeeklyClose = request.security("BINANCE:BTCUSDT", "W", close)
+btcWeeklyMAValue = ta.sma(btcWeeklyClose, btcWeeklyMAPeriod)
+
+// ===== CALCULATE COMPOSITE SIGNAL =====
+macroRiskOn = (dxy < ta.sma(dxy, 50)) and (tnx < 4.0) and (vix < 20)
+btcBullish = btcWeeklyClose > btcWeeklyMAValue
+memeHot = not na(memeHypeAvg) and (memeHypeAvg > 0.5) // 50% avg gain
+sentimentExtreme = not na(fearGreed) and (fearGreed <= 25 or fearGreed >= 75)
+
+buySignal = macroRiskOn and btcBullish and (memeHot or sentimentExtreme)
+sellSignal = not macroRiskOn and not btcBullish
+
+// ===== PLOTTING =====
+// Create a normalized scale for all indicators (0-100)
+plotRange = 100
+normDxy = plotRange * (dxy - ta.lowest(dxy, 200)) / (ta.highest(dxy, 200) - ta.lowest(dxy, 200))
+normTnx = plotRange * (tnx - ta.lowest(tnx, 200)) / (ta.highest(tnx, 200) - ta.lowest(tnx, 200))
+normVix = plotRange * (vix - ta.lowest(vix, 200)) / (ta.highest(vix, 200) - ta.lowest(vix, 200))
+normBtcDom = plotRange * (btcDom - ta.lowest(btcDom, 200)) / (ta.highest(btcDom, 200) - ta.lowest(btcDom, 200))
+normFearGreed = fearGreed // Already 0-100 scale
+normMemeHype = not na(memeHypeAvg) ? plotRange * (memeHypeAvg - -1) / (3 - -1) : na // Normalize between -100% to +200%
+
+// 1. Macro Factors
+plot(showMacro ? normDxy : na, "DXY", color=#2962FF, linewidth=2)
+plot(showMacro ? normTnx : na, "10Y Yield", color=#FF6D00, linewidth=2)
+plot(showMacro ? normVix : na, "VIX", color=#FF1744, linewidth=2)
+
+// 2. Crypto Metrics
+plot(showCrypto ? normBtcDom : na, "BTC Dominance", color=color.orange, linewidth=2)
+plot(showCrypto ? normFearGreed : na, "Fear & Greed", color=#29dfff, linewidth=2)
+
+// 3. Meme Hype
+plot(showMemeHype ? normMemeHype : na, "Meme Hype", color=#f907d1, linewidth=2)
+
+// Horizontal lines for reference
+hline(25, "Lower Threshold", color=color.gray, linestyle=hline.style_dotted)
+hline(50, "Midline", color=color.gray, linestyle=hline.style_dotted)
+hline(75, "Upper Threshold", color=color.gray, linestyle=hline.style_dotted)
+
+// ===== VISUAL SIGNALS =====
+bgcolor(buySignal ? color.new(color.green, 85) : sellSignal ? color.new(color.red, 85) : na)
+
+// Buy/Sell Labels
+if buySignal
+    label.new(bar_index, 100, "BUY ZONE\nMacro✅ BTC✅ " + (memeHot ? "Memes🔥" : "Sentiment⚠️"), 
+              color=color.green, textcolor=color.white, style=label.style_label_lower_right)
+    
+if sellSignal
+    label.new(bar_index, 0, "CAUTION\nMacro⛔ BTC⛔", 
+              color=color.red, textcolor=color.white, style=label.style_label_upper_right)
+
+// ===== ALERTS =====
+alertcondition(buySignal, "Crypto Buy Signal", "Macro + BTC bullish with meme/sentiment confirmation")
+alertcondition(sellSignal, "Crypto Risk Off", "Macro + BTC showing weakness")

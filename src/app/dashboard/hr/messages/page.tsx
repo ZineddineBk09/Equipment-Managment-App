@@ -37,6 +37,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "@/hooks/use-user";
+import html2canvas from "html2canvas";
+import { arabicFont } from "@/assets/NotoSansArabic-VariableFont_wdth,wght-normal.js"; // Import the custom font
 
 // Mock recipient groups
 const recipientGroups = [
@@ -141,6 +143,12 @@ export default function EmailPage() {
     }
   };
 
+  // Function to detect Arabic text
+  const isArabicText = (text: string) => {
+    const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+    return arabicRegex.test(text);
+  };
+
   // Generate PDF report
   const generatePDF = async (values: z.infer<typeof formSchema>) => {
     setIsGeneratingPDF(true);
@@ -149,153 +157,149 @@ export default function EmailPage() {
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     const doc = new jsPDF();
+
+    // ===== Embed Arabic Font =====
+    doc.addFileToVFS("NotoSansArabic.ttf", arabicFont);
+    doc.addFont("NotoSansArabic.ttf", "NotoSansArabic", "normal");
+    doc.setFont("NotoSansArabic");
+
     const currentDate = format(new Date(), "yyyy-MM-dd");
 
     // ===== Document Setup =====
     doc.setProperties({
       title: `Communication Report ${emailRefNumber}`,
     });
-    doc.setFont("helvetica", "normal");
-
-    // ===== Generate QR Code =====
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${emailRefNumber}`;
 
     // ===== Header Section =====
-    // Company Logo (Left Side)
-    // doc.addImage("/logo-report.png", "PNG", 15, 5, 30, 15);
-    doc.addImage("/logo-removebg.png", "PNG", 15, 4, 30, 30);
-
-    // QR Code (Right Side)
-    doc.addImage(qrCodeUrl, "PNG", doc.internal.pageSize.width - 40, 5, 30, 30);
-
-    // Company details (Centered below logo and QR)
+    doc.addImage("/logo-removebg-new.png", "PNG", 15, 4, 30, 30);
     doc.setFontSize(8);
-    doc.setTextColor(0, 0, 0);
     doc.text(
-      "EQUIPMENT MAINTENANCE MANAGEMENT SYSTEM",
+      "Oil Industry Supplies & Services Ltd",
       doc.internal.pageSize.width / 2,
       25,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
-    doc.text(
-      "123 Maintenance Street, Industrial Zone, 12345",
-      doc.internal.pageSize.width / 2,
-      30,
-      {
-        align: "center",
-      }
-    );
-    doc.text(
-      "admin@maintenancesystem.com | +1-234-567-8900",
-      doc.internal.pageSize.width / 2,
-      35,
-      {
-        align: "center",
-      }
-    );
-
-    // Document Title (Below company info)
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("COMMUNICATION REPORT", doc.internal.pageSize.width / 2, 45, {
+    doc.text("Iraq-Basra- Al-Muafaqiya", doc.internal.pageSize.width / 2, 30, {
       align: "center",
     });
+    doc.text(
+      "admin@oilindustrysuppliesandserviceslimited.com | +9647801552390",
+      doc.internal.pageSize.width / 2,
+      35,
+      { align: "center" }
+    );
 
-    // Email Reference Number and Date (Below title)
     doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
     doc.text(`Reference: #${emailRefNumber}`, 15, 55);
     doc.text(`Date: ${currentDate}`, doc.internal.pageSize.width - 15, 55, {
       align: "right",
     });
-
-    // Horizontal line separator
     doc.setDrawColor(200, 200, 200);
     doc.line(15, 60, doc.internal.pageSize.width - 15, 60);
+    doc.setFont("NotoSansArabic", "normal");
 
     // ===== Email Details Section =====
-    autoTable(doc, {
-      startY: 65,
-      head: [
-        [
-          {
-            content: "MESSAGE DETAILS",
-            colSpan: 2,
-            styles: {
-              halign: "center",
-              fillColor: [51, 51, 51],
-              textColor: 255,
-              fontStyle: "bold",
-            },
-          },
-        ],
-      ],
-      body: [
-        [
-          { content: "Subject:", styles: { fontStyle: "bold" } },
-          values.subject,
-        ],
-        [
-          { content: "Sent By:", styles: { fontStyle: "bold" } },
-          user?.email || "N/A",
-        ],
-      ],
-      theme: "grid",
-      styles: {
-        fontSize: 8,
-        cellPadding: 3,
-      },
-      columnStyles: {
-        0: { cellWidth: 40 },
-        1: { cellWidth: 140 },
-      },
+    doc.setFontSize(10);
+    doc.setFont("NotoSansArabic", "normal");
+
+    // Render "MESSAGE DETAILS" header
+    doc.text("MESSAGE DETAILS", doc.internal.pageSize.width / 2, 65, {
+      align: "center",
     });
+
+    // Render Subject
+    const subjectY = 75; // Y-coordinate for the subject
+    if (isArabicText(values.subject)) {
+      const arabicSubjectLines = doc.splitTextToSize(values.subject, 140); // Wrap Arabic subject text
+      doc.text("Subject:", 15, subjectY); // Render "Subject:" label
+      doc.text(arabicSubjectLines, 190, subjectY, { align: "right" }); // Render Arabic subject text
+    } else {
+      doc.text("Subject:", 15, subjectY); // Render "Subject:" label
+      doc.text(values.subject, 60, subjectY); // Render non-Arabic subject text
+    }
+
+    // Render Sent By
+    const sentByY = subjectY + 10; // Adjust Y-coordinate for "Sent By"
+    doc.text("Sent By:", 15, sentByY); // Render "Sent By:" label
+    doc.text(
+      user?.email || "N/A",
+      isArabicText(values.subject) ? 155 : 60,
+      sentByY
+    ); // Render sender's email
+
+    // Draw a horizontal line below the details
+    doc.setDrawColor(200, 200, 200);
+    doc.line(15, sentByY + 5, doc.internal.pageSize.width - 15, sentByY + 5);
 
     // ===== Message Content =====
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(
-      "MESSAGE CONTENT",
-      doc.internal.pageSize.width / 2,
-      //@ts-ignore
-      doc.autoTable.previous.finalY + 10,
-      {
-        align: "center",
-      }
-    );
-
-    autoTable(doc, {
-      //@ts-ignore
-      startY: doc.autoTable.previous.finalY + 15,
-      body: [[values.message]],
-      theme: "plain",
-      styles: {
-        fontSize: 8,
-        cellPadding: 5,
-        overflow: "linebreak",
-        minCellHeight: 50,
-      },
+    doc.setFont("NotoSansArabic", "normal");
+    doc.text("MESSAGE CONTENT", doc.internal.pageSize.width / 2, sentByY + 15, {
+      align: "center",
     });
 
-    // ===== Footer =====
-    doc.setFontSize(7);
-    doc.text(
-      "THIS COMMUNICATION REPORT IS GENERATED BY THE EQUIPMENT MAINTENANCE MANAGEMENT SYSTEM. THIS IS AN AUTOMATED REPORT\n" +
-        "AND SERVES AS A RECORD OF COMMUNICATION SENT THROUGH THE SYSTEM. IF YOU HAVE ANY QUESTIONS REGARDING THIS\n" +
-        "COMMUNICATION, PLEASE CONTACT THE SYSTEM ADMINISTRATOR.",
-      15,
-      //@ts-ignore
-      doc.autoTable.previous.finalY + 10,
-      { maxWidth: 180 }
-    );
+    if (isArabicText(values.message)) {
+      // Render Arabic text with proper alignment and wrapping
+      const arabicTextLines = doc.splitTextToSize(values.message, 250); // Split text to fit within 250 units width
+      const arabicTextHeight = arabicTextLines.length * 10; // Calculate height based on number of lines (10 units per line)
+      doc.text(
+        arabicTextLines,
+        doc.internal.pageSize.width - 15,
+        sentByY + 25, // Adjusted Y-coordinate to add spacing
+        { align: "right" }
+      );
 
-    doc.text(
-      "Generated by Equipment Maintenance Management System",
-      15,
-      doc.internal.pageSize.height - 12
-    );
+      // Adjust footer position based on Arabic text height
+      const footerStartY = sentByY + 25 + arabicTextHeight + 20; // Add extra spacing after the Arabic text
+      doc.setFontSize(7);
+      doc.text(
+        "THIS COMMUNICATION REPORT IS GENERATED BY THE Oil Industry Supplies & Services Ltd SYSTEM. THIS IS AN AUTOMATED REPORT\n" +
+          "AND SERVES AS A RECORD OF COMMUNICATION SENT THROUGH THE SYSTEM. IF YOU HAVE ANY QUESTIONS REGARDING THIS\n" +
+          "COMMUNICATION, PLEASE CONTACT THE SYSTEM ADMINISTRATOR.",
+        15,
+        footerStartY,
+        { maxWidth: 180 }
+      );
+
+      doc.text(
+        "Generated by Oil Industry Supplies & Services Ltd System",
+        15,
+        doc.internal.pageSize.height - 12
+      );
+    } else {
+      // Handle non-Arabic text directly
+      autoTable(doc, {
+        //@ts-ignore
+        startY: sentByY + 15,
+        body: [[values.message]],
+        theme: "plain",
+        styles: {
+          fontSize: 8,
+          cellPadding: 5,
+          overflow: "linebreak",
+          minCellHeight: 50,
+        },
+      });
+
+      // Adjust footer position for non-Arabic text
+      //@ts-ignore
+      const footerStartY = doc.autoTable.previous.finalY + 70; // Default footer position for non-Arabic text
+      doc.setFontSize(7);
+      doc.text(
+        "THIS COMMUNICATION REPORT IS GENERATED BY THE Oil Industry Supplies & Services Ltd SYSTEM. THIS IS AN AUTOMATED REPORT\n" +
+          "AND SERVES AS A RECORD OF COMMUNICATION SENT THROUGH THE SYSTEM. IF YOU HAVE ANY QUESTIONS REGARDING THIS\n" +
+          "COMMUNICATION, PLEASE CONTACT THE SYSTEM ADMINISTRATOR.",
+        15,
+        footerStartY,
+        { maxWidth: 180 }
+      );
+
+      doc.text(
+        "Generated by Oil Industry Supplies & Services Ltd System",
+        15,
+        doc.internal.pageSize.height - 12
+      );
+    }
 
     doc.save(`communication-report-${emailRefNumber}.pdf`);
 

@@ -53,7 +53,7 @@ function ReportsArchivePage() {
       const { data: files, error } = await supabase.storage
         .from("ResenixPro")
         .list("public/reports");
-
+      error && console.log("Error", error);
       if (error) throw error;
       // Map files to our Report interface
       const mappedReports = files.map((file) => ({

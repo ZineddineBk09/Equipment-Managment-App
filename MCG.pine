@@ -1,0 +1,128 @@
+//@version=5
+indicator("MCG - Meme Coin Gains [Da_Prof]", overlay=false)
+
+doge_use = input.bool(true, "DogeCoin (DOGE)")
+shib_use = input.bool(true, "Shiba Inu (SHIB)")
+pepe_use = input.bool(true, "Pepe (PEPE)")
+wif_use = input.bool(true, "dogwifhat (WIF)")
+popcat_use = input.bool(true, "Popcat (Sol) (POPCAT)")
+bonk_use = input.bool(true, "Bonk (BONK)")
+floki_use = input.bool(true, "Floki Inu (FLOKI)")
+brett_use = input.bool(true, "Brett (Based) (BRETT)")
+mew_use = input.bool(true, "cat in a dogs world (MEW)")
+mog_use = input.bool(true, "Mog Coin (MOG)")
+not_use = input.bool(true, "Notcoin (NOT)")
+neiro_use = input.bool(true, "First Neiro On Ethereum (NEIRO)")
+
+// Newly Added Meme Coins (SPX, GIGA, FART)
+spx_use     = input.bool(true, "SPX6900 (SPX)")
+giga_use    = input.bool(true, "Gigashad (GIGA)")
+fart_use    = input.bool(true, "Fartcoin (FART)")
+
+// ==== Fetch Prices (Daily Close) ====
+getClose(sym) => request.security(sym, "D", close)
+
+doge_close = getClose("DOGEUSDT")
+shib_close = getClose("SHIBUSDT")
+pepe_close = getClose("PEPEUSDT")
+wif_close = getClose("WIFUSDT")
+popcat_close = getClose("POPCATUSDT")
+bonk_close = getClose("BONKUSDT")
+floki_close = getClose("FLOKIUSDT")
+brett_close = getClose("BRETTUSDT")
+mew_close = getClose("MEWUSDT")
+mog_close = getClose("MOGUSDT")
+not_close = getClose("NOTUSDT")
+neiro_close = getClose("NEIROUSDT")
+
+// Newly Added Meme Coins (SPX, GIGA, FART)
+spx_close = getClose("SPXUSDT")
+giga_close = getClose("GIGAUSDT")
+fart_close = getClose("FARTCOINUSDT")
+
+mcg_period = input(50, "Percent gain period")
+
+float MCG = 0
+MCG := doge_use and not na(doge_close[mcg_period]) ? (doge_close - doge_close[mcg_period]) / doge_close[mcg_period] : MCG
+MCG := shib_use and not na(shib_close[mcg_period]) ? MCG + (shib_close - shib_close[mcg_period]) / shib_close[mcg_period] : MCG
+MCG := pepe_use and not na(pepe_close[mcg_period]) ? MCG + (pepe_close - pepe_close[mcg_period]) / pepe_close[mcg_period] : MCG
+MCG := wif_use and not na(wif_close[mcg_period]) ? MCG + (wif_close - wif_close[mcg_period]) / wif_close[mcg_period] : MCG
+MCG := popcat_use and not na(popcat_close[mcg_period]) ? MCG + (popcat_close - popcat_close[mcg_period]) / popcat_close[mcg_period] : MCG
+MCG := bonk_use and not na(bonk_close[mcg_period]) ? MCG + (bonk_close - bonk_close[mcg_period]) / bonk_close[mcg_period] : MCG
+MCG := floki_use and not na(floki_close[mcg_period]) ? MCG + (floki_close - floki_close[mcg_period]) / floki_close[mcg_period] : MCG
+MCG := brett_use and not na(brett_close[mcg_period]) ? MCG + (brett_close - brett_close[mcg_period]) / brett_close[mcg_period] : MCG
+MCG := mew_use and not na(mew_close[mcg_period]) ? MCG + (mew_close - mew_close[mcg_period]) / mew_close[mcg_period] : MCG
+MCG := mog_use and not na(mog_close[mcg_period]) ? MCG + (mog_close - mog_close[mcg_period]) / mog_close[mcg_period] : MCG
+MCG := not_use and not na(not_close[mcg_period]) ? MCG + (not_close - not_close[mcg_period]) / not_close[mcg_period] : MCG
+MCG := neiro_use and not na(neiro_close[mcg_period]) ? MCG + (neiro_close - neiro_close[mcg_period]) / neiro_close[mcg_period] : MCG
+
+// Newly Added Meme Coins (SPX, GIGA, FART)
+MCG := spx_use and not na(spx_close[mcg_period]) ? MCG + (spx_close - spx_close[mcg_period]) / spx_close[mcg_period] : MCG
+MCG := giga_use and not na(giga_close[mcg_period]) ? MCG + (giga_close - giga_close[mcg_period]) / giga_close[mcg_period] : MCG
+MCG := fart_use and not na(fart_close[mcg_period]) ? MCG + (fart_close - fart_close[mcg_period]) / fart_close[mcg_period] : MCG
+
+denom = doge_use and not na(doge_close) ? 1 : 0
+denom := shib_use and not na(shib_close) ? denom + 1 : denom
+denom := pepe_use and not na(pepe_close) ? denom + 1 : denom
+denom := wif_use and not na(wif_close) ? denom + 1 : denom
+denom := popcat_use and not na(popcat_close) ? denom + 1 : denom
+denom := bonk_use and not na(bonk_close) ? denom + 1 : denom
+denom := floki_use and not na(floki_close) ? denom + 1 : denom
+denom := brett_use and not na(brett_close) ? denom + 1 : denom
+denom := mew_use and not na(mew_close) ? denom + 1 : denom
+denom := mog_use and not na(mog_close) ? denom + 1 : denom
+denom := not_use and not na(not_close) ? denom + 1 : denom
+denom := neiro_use and not na(neiro_close) ? denom + 1 : denom
+
+// Newly Added Meme Coins (SPX, GIGA, FART)
+denom := spx_use and not na(spx_close) ? denom + 1 : denom
+denom := giga_use and not na(giga_close) ? denom + 1 : denom
+denom := fart_use and not na(fart_close) ? denom + 1 : denom
+
+// Calc average
+MCG := MCG / denom
+
+// Don't plot zeros
+MCG := MCG == 0 ? na : MCG
+MCG := not na(MCG) ? MCG + 1 : MCG
+MCG_plot = math.log10(MCG) * 100
+
+// Get SMA 
+fast_sma_period = input(20, "SMA Period")
+//slow_sma_period = input(20, "Slow SMA Period")
+MCG_fast_sma = math.log10(ta.sma(MCG, fast_sma_period)) * 100
+//MCG_slow_sma = math.log10(ta.sma(MCG, slow_sma_period)) * 100
+
+// Plot 
+bottom_fast_sma_line_value = input(-12, "Bottom Line Value")
+top_fast_sma_line_value = input(60, "Top Line Value")
+bottom_trigger_line_color = color.rgb(76, 109, 255)
+top_trigger_line_color = color.rgb(110, 77, 255)
+
+L1 = plot(not na(MCG) ? bottom_fast_sma_line_value : na, color=color.black, linewidth = 4)
+L2 = plot(not na(MCG) ? bottom_fast_sma_line_value : na, color=bottom_trigger_line_color, linewidth = 2)
+L3 = plot(not na(MCG) ? top_fast_sma_line_value : na, color=color.black, linewidth = 4)
+L4 = plot(not na(MCG) ? top_fast_sma_line_value : na, color=top_trigger_line_color, linewidth = 2)
+
+plot(MCG_plot, color=color.black, title="MCG Background", linewidth = 4)
+plot(MCG_plot, color=#29dfff, title="MCG", linewidth = 2)
+MCG_line_background = plot(MCG_fast_sma, color=color.black, linewidth = 4)
+MCG_line = plot(MCG_fast_sma, color=color.rgb(183, 7, 37), linewidth = 2, style=plot.style_linebr)
+
+bkg_color_above = color.maroon
+bkg_color_below = color.rgb(45, 255, 52, 60)
+bgcolor(MCG_fast_sma >= top_fast_sma_line_value ? bkg_color_above : na, offset = 0, title = "MCG High Highlight")
+bgcolor(MCG_fast_sma <= bottom_fast_sma_line_value ? bkg_color_below : na, offset = 0, title = "MCG Low Highlight")
+
+//Alerts
+if MCG_fast_sma >= top_fast_sma_line_value
+    alert("MCG - Meme coin gains moving average high risk trigger", freq = alert.freq_once_per_bar_close)
+
+if MCG_fast_sma <= bottom_fast_sma_line_value
+    alert("MCG - Meme coin gains moving average low risk trigger", freq = alert.freq_once_per_bar_close)
+
+if MCG_plot >= top_fast_sma_line_value
+    alert("MCG - Meme coin gains indicator crossing high risk trigger line", freq = alert.freq_once_per_bar_close)
+
+if MCG_plot <= bottom_fast_sma_line_value
+    alert("MCG - Meme coin gains indicator crossing low risk trigger line", freq = alert.freq_once_per_bar_close)

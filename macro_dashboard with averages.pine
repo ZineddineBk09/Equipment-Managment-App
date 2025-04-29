@@ -1,0 +1,66 @@
+//@version=5
+indicator("MACRO MARKET DASHBOARD [DXY + Yields + RSI + VIX + BTC.D] - [ZINEDDINE]", overlay=false, scale=scale.left)
+
+// ===== INPUTS =====
+showDXY      = input.bool(true, "Show DXY Trend", group="Macro Indicators")
+dxySymbol    = input.string("TVC:DXY", "DXY Symbol", group="Macro Indicators")
+showTNX      = input.bool(true, "Show 10Y Yield (TNX)", group="Macro Indicators")
+tnxSymbol    = input.string("TVC:TNX", "TNX Symbol", group="Macro Indicators")
+showVIX      = input.bool(true, "Show VIX", group="Macro Indicators")
+vixSymbol    = input.string("CBOE:VIX", "VIX Symbol", group="Macro Indicators")
+showBTCDom   = input.bool(true, "Show BTC Dominance", group="Crypto")
+btcDomSymbol = input.string("CRYPTOCAP:BTC.D", "BTC.D Symbol", group="Crypto")
+rsiPeriod    = input(14, "RSI Period", group="Momentum")
+useWeeklyRSI = input.bool(true, "Use Weekly RSI?", group="Momentum")
+
+// ===== FETCH DATA =====
+dxyClose = request.security(dxySymbol, "D", close)
+tnxClose = request.security(tnxSymbol, "D", close)
+vixClose = request.security(vixSymbol, "D", close)
+btcDomClose = request.security(btcDomSymbol, "D", close)
+rsiDaily  = ta.rsi(close, rsiPeriod)
+rsiWeekly = request.security(syminfo.tickerid, "W", ta.rsi(close, rsiPeriod))
+
+// ===== NEW: DXY Average =====
+dxySMA = ta.sma(dxyClose, 50)
+
+// ===== PLOTTING =====
+plot(showDXY ? dxyClose : na, "DXY", color=#2962FF, linewidth=2)
+plot(showDXY ? dxySMA : na, "DXY 50 SMA", color=color.blue, linewidth=2, style=plot.style_line)
+
+// 10Y Yield
+plot(showTNX ? tnxClose : na, "10Y Yield", color=#FFFFFF, linewidth=2)
+
+// VIX
+plot(showVIX ? vixClose : na, "VIX", color=#FF1744, linewidth=2)
+
+// BTC Dominance
+plot(showBTCDom ? btcDomClose : na, "BTC.D", color=color.orange, linewidth=2)
+
+// RSI Daily and Weekly
+plot(rsiDaily, "Daily RSI", color=#f907d1)
+plot(useWeeklyRSI ? rsiWeekly : na, "Weekly RSI", color=color.purple)
+
+// ===== NEW: VIX Range Area =====
+// VIX > 30 = Risk-Off --> Market Fear
+// VIX < 20 = Risk-On --> Market Calm
+vixUpper = 30
+vixLower = 20
+vixUpperLine = plot(showVIX ? vixUpper : na, title="VIX Upper Range", color=color.red, style=plot.style_stepline)
+vixLowerLine = plot(showVIX ? vixLower : na, title="VIX Lower Range", color=color.red, style=plot.style_stepline)
+fill(vixUpperLine, vixLowerLine, color=color.new(color.red, 50))
+
+// ===== NEW: RSI Overbought/Oversold Lines =====
+hline(70, "RSI Overbought", color=color.purple, linestyle=hline.style_solid, linewidth=2)
+hline(30, "RSI Oversold", color=color.purple, linestyle=hline.style_solid, linewidth=2)
+
+// ===== ALERTS & THRESHOLDS =====
+riskOn  = (dxyClose < dxySMA) and (tnxClose < 4.0) and (vixClose < 20)
+riskOff = (dxyClose > dxySMA) and (tnxClose > 4.0) and (vixClose > 30)
+
+// Background Color
+bgcolor(riskOn ? color.new(color.green, 50) : riskOff ? color.new(color.red, 50) : na)
+
+// ===== ALERTS =====
+alertcondition(riskOn, "Risk-On Mode (Buy Dips)", "Macro: Risk-On (DXY weak, yields low, VIX calm)")
+alertcondition(riskOff, "Risk-Off Mode (Caution)", "Macro: Risk-Off (DXY strong, yields high, VIX spiking)")
